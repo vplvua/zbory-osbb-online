@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState } from 'react-dom';
+import { useActionState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { OsbbFormState } from '@/app/osbb/actions';
 
@@ -12,7 +12,7 @@ type OsbbDeleteFormProps = {
 };
 
 export default function OsbbDeleteForm({ action, id }: OsbbDeleteFormProps) {
-  const [state, formAction] = useFormState(action, initialState);
+  const [state, formAction] = useActionState(action, initialState);
 
   return (
     <form action={formAction} className="space-y-2">

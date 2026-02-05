@@ -7,7 +7,7 @@ import OsbbDeleteForm from '@/app/osbb/_components/osbb-delete-form';
 import { deleteOsbbAction, updateOsbbAction } from '@/app/osbb/actions';
 
 type EditPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function OsbbEditPage({ params }: EditPageProps) {
@@ -16,9 +16,10 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
     redirect('/login');
   }
 
+  const resolvedParams = await params;
   const osbb = await prisma.oSBB.findFirst({
     where: {
-      id: params.id,
+      id: resolvedParams.id,
       userId: session.sub,
       isDeleted: false,
     },

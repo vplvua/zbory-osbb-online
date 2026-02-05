@@ -1,11 +1,12 @@
 import VerifyForm from '@/app/verify/verify-form';
 
 type VerifyPageProps = {
-  searchParams?: { phone?: string };
+  searchParams?: Promise<{ phone?: string }>;
 };
 
-export default function VerifyPage({ searchParams }: VerifyPageProps) {
-  const initialPhone = searchParams?.phone ?? '';
+export default async function VerifyPage({ searchParams }: VerifyPageProps) {
+  const resolvedParams = await searchParams;
+  const initialPhone = resolvedParams?.phone ?? '';
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-12">
