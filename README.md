@@ -96,6 +96,14 @@ import { prisma, withTransaction } from '@/lib/db/prisma';
 
 The singleton prevents excessive connections during Next.js dev hot reloads.
 
+## SMS adapter (dev)
+
+If `TURBOSMS_API_KEY` is not set, the SMS adapter uses a dev mock that logs codes to the console and returns success. Use:
+
+```ts
+import { getSmsAdapter } from '@/lib/sms/adapter';
+```
+
 ## Getting Started
 
 First, run the development server:
