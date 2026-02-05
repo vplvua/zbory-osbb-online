@@ -1,5 +1,43 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Local DB quickstart
+
+1. Copy env template:
+
+```bash
+cp .env.example .env.local
+```
+
+1. Start the database:
+
+```bash
+docker compose up -d
+```
+
+1. Check status:
+
+```bash
+docker compose ps
+```
+
+1. Tail logs:
+
+```bash
+docker compose logs -f db
+```
+
+1. Stop the database:
+
+```bash
+docker compose down
+```
+
+1. Reset the database (removes volume/data):
+
+```bash
+docker compose down -v
+```
+
 ## Getting Started
 
 First, run the development server:
