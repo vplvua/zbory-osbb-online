@@ -104,6 +104,17 @@ If `TURBOSMS_API_KEY` is not set, the SMS adapter uses a dev mock that logs code
 import { getSmsAdapter } from '@/lib/sms/adapter';
 ```
 
+## SMS login (MVP)
+
+Minimal OTP flow is available at:
+
+```text
+/login -> request code
+/verify -> submit code
+```
+
+In dev, the OTP code is printed in the server logs when the mock adapter is used.
+
 ## Getting Started
 
 First, run the development server:
