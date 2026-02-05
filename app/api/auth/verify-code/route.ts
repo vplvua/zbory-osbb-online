@@ -4,6 +4,8 @@ import { hashOtpCode, OTP_MAX_ATTEMPTS } from '@/lib/auth/otp';
 import { getAuthSecret } from '@/lib/auth/secret';
 import { createSessionToken, setSessionCookie } from '@/lib/auth/session';
 import { isValidCode, isValidPhone, normalizePhone } from '@/lib/auth/validation';
+import { checkOtpRateLimit, OTP_RATE_LIMIT } from '@/lib/auth/rate-limit';
+import { SmsRateLimitAction } from '@prisma/client';
 
 const INVALID_CODE_MESSAGE = 'Невірний код. Залишилось спроб: ';
 const EXPIRED_CODE_MESSAGE = 'Код більше не дійсний. Запросіть новий код.';
@@ -22,6 +24,29 @@ export async function POST(request: Request) {
 
   if (!isValidPhone(phone) || !isValidCode(code)) {
     return NextResponse.json({ ok: false, message: 'Невірні дані.' }, { status: 400 });
+  }
+
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip') ??
+    undefined;
+
+  const rateLimit = await checkOtpRateLimit({
+    prisma,
+    phone,
+    ip,
+    action: SmsRateLimitAction.VERIFY_CODE,
+  });
+
+  if (!rateLimit.allowed) {
+    const retryMinutes = Math.max(
+      1,
+      Math.ceil((rateLimit.retryAfterSeconds ?? OTP_RATE_LIMIT.windowMs / 1000) / 60),
+    );
+    return NextResponse.json(
+      { ok: false, message: `Забагато спроб. Спробуйте через ${retryMinutes} хв.` },
+      { status: 429 },
+    );
   }
 
   const otp = await prisma.smsOtp.findFirst({

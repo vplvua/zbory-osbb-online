@@ -39,6 +39,11 @@ enum Vote {
   AGAINST // Проти
 }
 
+enum SmsRateLimitAction {
+  REQUEST_CODE
+  VERIFY_CODE
+}
+
 model User {
   id        String   @id @default(cuid())
   phone     String   @unique
@@ -64,6 +69,16 @@ model SmsOtp {
 
   @@index([phone, expiresAt])
   @@index([phone, createdAt])
+}
+
+model SmsRateLimit {
+  id        String             @id @default(cuid())
+  phone     String
+  ip        String?
+  action    SmsRateLimitAction
+  createdAt DateTime           @default(now())
+
+  @@index([phone, action, createdAt])
 }
 
 model UserSettings {

@@ -115,6 +115,8 @@ Minimal OTP flow is available at:
 
 In dev, the OTP code is printed in the server logs when the mock adapter is used.
 
+Rate limiting: OTP request/verify endpoints allow up to 3 attempts per 15 minutes per phone.
+
 ## Getting Started
 
 First, run the development server:

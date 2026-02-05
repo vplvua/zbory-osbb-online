@@ -4,6 +4,8 @@ import { generateOtpCode, getOtpExpiry, hashOtpCode } from '@/lib/auth/otp';
 import { getAuthSecret } from '@/lib/auth/secret';
 import { getSmsAdapter } from '@/lib/sms/adapter';
 import { isValidPhone, normalizePhone } from '@/lib/auth/validation';
+import { checkOtpRateLimit, OTP_RATE_LIMIT } from '@/lib/auth/rate-limit';
+import { SmsRateLimitAction } from '@prisma/client';
 
 export async function POST(request: Request) {
   let payload: { phone?: string };
@@ -19,6 +21,29 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, message: 'Невірний формат номера телефону.' },
       { status: 400 },
+    );
+  }
+
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip') ??
+    undefined;
+
+  const rateLimit = await checkOtpRateLimit({
+    prisma,
+    phone,
+    ip,
+    action: SmsRateLimitAction.REQUEST_CODE,
+  });
+
+  if (!rateLimit.allowed) {
+    const retryMinutes = Math.max(
+      1,
+      Math.ceil((rateLimit.retryAfterSeconds ?? OTP_RATE_LIMIT.windowMs / 1000) / 60),
+    );
+    return NextResponse.json(
+      { ok: false, message: `Забагато спроб. Спробуйте через ${retryMinutes} хв.` },
+      { status: 429 },
     );
   }
 
