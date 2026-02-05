@@ -7,4 +7,224 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Placeholder for models. Define schema in the next task.
+enum UserRole {
+  ADMIN
+  SIGNER
+  READONLY
+  MEMBER
+}
+
+enum ProtocolType {
+  ESTABLISHMENT // Установчі збори
+  GENERAL       // Загальні збори
+}
+
+enum ConsentStatus {
+  NONE         // Згода не надсилалась
+  NOT_REQUIRED // Позначено що згода вже є (підписана раніше)
+  PENDING      // Надіслано, очікує підпису
+  SIGNED       // Підписано
+  EXPIRED      // Термін минув
+}
+
+enum SheetStatus {
+  DRAFT             // Створено, очікує дій співвласника
+  PENDING_ORGANIZER // Співвласник підписав, очікує відповідальної особи
+  SIGNED            // Підписано обома
+  EXPIRED           // Термін минув
+}
+
+enum Vote {
+  FOR     // За
+  AGAINST // Проти
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  email     String?
+  role      UserRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  osbbs    OSBB[]
+  settings UserSettings?
+}
+
+model UserSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // API ключі (зашифровані)
+  dubidocApiKey  String?
+  dubidocOrgId   String?
+  turboSmsApiKey String?
+  openAiApiKey   String?
+
+  // Дані уповноваженої особи
+  organizerName     String?
+  organizerPosition String?
+  organizerEmail    String? // Обов'язкове для роботи з Dubidoc
+  organizerPhone    String? // Обов'язкове
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OSBB {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name    String
+  address String
+  edrpou  String
+  email   String?
+  phone   String?
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  protocols Protocol[]
+
+  @@index([userId])
+}
+
+model Protocol {
+  id     String @id @default(cuid())
+  osbbId String
+  osbb   OSBB   @relation(fields: [osbbId], references: [id], onDelete: Cascade)
+
+  number String
+  date   DateTime
+  type   ProtocolType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions Question[]
+  owners    Owner[]
+  sheets    Sheet[]
+
+  @@index([osbbId])
+}
+
+model Question {
+  id         String @id @default(cuid())
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+
+  orderNumber       Int
+  text              String
+  proposal          String
+  requiresTwoThirds Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  answers Answer[]
+
+  @@index([protocolId])
+}
+
+model Owner {
+  id         String @id @default(cuid())
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+
+  fullName              String
+  apartmentNumber       String
+  totalArea             Decimal @db.Decimal(10, 2)
+  ownershipNumerator    Int
+  ownershipDenominator  Int
+  ownedArea             Decimal @db.Decimal(10, 2)
+
+  ownershipDocument String // Обов'язкове поле (документ права власності)
+  email             String?
+  phone             String?
+
+  // Представник
+  representativeName     String?
+  representativeDocument String?
+
+  // Згода на обробку персональних даних
+  consentStatus     ConsentStatus @default(NONE)
+  consentSignedAt   DateTime?
+  consentDocumentId String? // Dubidoc document ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sheets Sheet[]
+
+  @@index([protocolId])
+}
+
+model Sheet {
+  id         String @id @default(cuid())
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  ownerId    String
+  owner      Owner   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  surveyDate DateTime
+  status     SheetStatus @default(DRAFT)
+
+  // Токен для публічного доступу співвласника
+  publicToken String @unique @default(cuid()) // 64+ chars
+
+  // Dubidoc
+  dubidocDocumentId String? @unique
+
+  // PDF
+  pdfFileUrl String?
+
+  // Підписання (новий порядок: спочатку співвласник, потім відповідальна особа)
+  ownerSignedAt     DateTime?
+  organizerSignedAt DateTime?
+
+  // Термін дії
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  answers Answer[]
+
+  @@index([protocolId])
+  @@index([ownerId])
+}
+
+model Answer {
+  id         String @id @default(cuid())
+  sheetId    String
+  sheet      Sheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  vote Vote?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sheetId, questionId])
+  @@index([sheetId])
+  @@index([questionId])
+}
+
+model DeferredQueue {
+  id        String   @id @default(cuid())
+  type      String
+  payload   Json
+  status    String
+  attempts  Int      @default(0)
+  runAt     DateTime
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, runAt])
+}
