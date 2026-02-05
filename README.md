@@ -48,6 +48,44 @@ cp .env.example .env.local
 
 1. `DATABASE_URL` points to your local Postgres instance (default: `localhost:5432`).
 
+## Prisma quickstart
+
+1. Install dependencies:
+
+```bash
+pnpm install
+```
+
+1. Generate Prisma client:
+
+```bash
+pnpm db:generate
+```
+
+Note: if `pnpm` reports ignored build scripts for Prisma, run:
+
+```bash
+pnpm approve-builds
+```
+
+Then re-run:
+
+```bash
+pnpm db:generate
+```
+
+1. Create and apply a migration (when schema changes):
+
+```bash
+pnpm db:migrate
+```
+
+1. Open Prisma Studio:
+
+```bash
+pnpm db:studio
+```
+
 ## Getting Started
 
 First, run the development server:
