@@ -86,6 +86,16 @@ pnpm db:migrate
 pnpm db:studio
 ```
 
+## DB helper
+
+Use the shared Prisma client singleton in server-only code (API routes, server actions):
+
+```ts
+import { prisma, withTransaction } from '@/lib/db/prisma';
+```
+
+The singleton prevents excessive connections during Next.js dev hot reloads.
+
 ## Getting Started
 
 First, run the development server:
