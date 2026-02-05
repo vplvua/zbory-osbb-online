@@ -5,6 +5,9 @@ export default function DashboardPage() {
       <p className="text-sm text-neutral-600">
         Тут буде список ОСББ та протоколів. Розділ у розробці.
       </p>
+      <a className="text-sm text-blue-600 underline" href="/dashboard/settings">
+        Перейти до налаштувань
+      </a>
     </main>
   );
 }
