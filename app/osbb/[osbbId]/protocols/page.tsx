@@ -1,0 +1,100 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db/prisma';
+import { getSessionPayload } from '@/lib/auth/session-token';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+export default async function ProtocolsPage({ params }: { params: Promise<{ osbbId: string }> }) {
+  const session = await getSessionPayload();
+  if (!session) {
+    redirect('/login');
+  }
+
+  const { osbbId } = await params;
+  const osbb = await prisma.oSBB.findFirst({
+    where: { id: osbbId, userId: session.sub, isDeleted: false },
+  });
+
+  if (!osbb) {
+    redirect('/osbb');
+  }
+
+  const protocols = await prisma.protocol.findMany({
+    where: { osbbId: osbb.id },
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { questions: true } } },
+  });
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 py-12">
+      <div className="space-y-2">
+        <p className="text-sm text-neutral-600">
+          <Link href="/osbb" className="text-blue-600 hover:underline">
+            ← Назад до ОСББ
+          </Link>
+        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Протоколи</h1>
+            <p className="text-sm text-neutral-600">{osbb.name}</p>
+          </div>
+          <Link
+            href={`/osbb/${osbb.id}/protocols/new`}
+            className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+          >
+            Додати протокол
+          </Link>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Список протоколів</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {protocols.length === 0 ? (
+            <p className="text-sm text-neutral-600">Протоколи ще не створено.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Номер</TableHead>
+                  <TableHead>Дата</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Питань</TableHead>
+                  <TableHead className="text-right">Дії</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {protocols.map((protocol) => (
+                  <TableRow key={protocol.id}>
+                    <TableCell className="font-medium">{protocol.number}</TableCell>
+                    <TableCell>{protocol.date.toLocaleDateString('uk-UA')}</TableCell>
+                    <TableCell>{protocol.type === 'GENERAL' ? 'Загальні' : 'Установчі'}</TableCell>
+                    <TableCell>{protocol._count.questions}</TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        href={`/osbb/${osbb.id}/protocols/${protocol.id}/edit`}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        Редагувати
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </main>
+  );
+}

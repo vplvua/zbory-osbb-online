@@ -72,12 +72,20 @@ export default async function OsbbListPage() {
                     <TableCell>{osbb.edrpou}</TableCell>
                     <TableCell>{osbb._count.protocols}</TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        className="text-sm text-blue-600 hover:underline"
-                        href={`/osbb/${osbb.id}/edit`}
-                      >
-                        Редагувати
-                      </Link>
+                      <div className="flex items-center justify-end gap-4">
+                        <Link
+                          className="text-sm text-blue-600 hover:underline"
+                          href={`/osbb/${osbb.id}/protocols`}
+                        >
+                          Протоколи
+                        </Link>
+                        <Link
+                          className="text-sm text-blue-600 hover:underline"
+                          href={`/osbb/${osbb.id}/edit`}
+                        >
+                          Редагувати
+                        </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

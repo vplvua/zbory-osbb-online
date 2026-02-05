@@ -7,7 +7,7 @@ import OsbbDeleteForm from '@/app/osbb/_components/osbb-delete-form';
 import { deleteOsbbAction, updateOsbbAction } from '@/app/osbb/actions';
 
 type EditPageProps = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ osbbId: string }>;
 };
 
 export default async function OsbbEditPage({ params }: EditPageProps) {
@@ -16,10 +16,10 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
     redirect('/login');
   }
 
-  const resolvedParams = await params;
+  const { osbbId } = await params;
   const osbb = await prisma.oSBB.findFirst({
     where: {
-      id: resolvedParams.id,
+      id: osbbId,
       userId: session.sub,
       isDeleted: false,
     },
@@ -50,6 +50,21 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
           edrpou: osbb.edrpou,
         }}
       />
+
+      <div className="rounded-lg border border-neutral-200 p-6">
+        <h2 className="text-lg font-semibold">Протоколи</h2>
+        <p className="mt-2 text-sm text-neutral-600">
+          Керуйте протоколами зборів та питаннями порядку денного.
+        </p>
+        <div className="mt-4">
+          <Link
+            href={`/osbb/${osbb.id}/protocols`}
+            className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+          >
+            Перейти до протоколів
+          </Link>
+        </div>
+      </div>
 
       <div className="rounded-lg border border-neutral-200 p-6">
         <h2 className="text-lg font-semibold">Видалення</h2>
