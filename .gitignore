@@ -55,3 +55,6 @@ docker-data
 
 *.local
 *.cache
+
+AGENTS.md
+DECISIONS.md

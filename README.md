@@ -38,6 +38,16 @@ docker compose down
 docker compose down -v
 ```
 
+## Local environment
+
+1. Copy `.env.example` to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+1. `DATABASE_URL` points to your local Postgres instance (default: `localhost:5432`).
+
 ## Getting Started
 
 First, run the development server:
