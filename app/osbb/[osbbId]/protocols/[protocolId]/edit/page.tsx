@@ -89,6 +89,21 @@ export default async function ProtocolEditPage({
       <QuestionCreateForm action={addQuestionAction} protocolId={protocol.id} />
 
       <section className="rounded-lg border border-neutral-200 p-6">
+        <h2 className="text-lg font-semibold">Співвласники</h2>
+        <p className="mt-2 text-sm text-neutral-600">
+          Додайте співвласників для цього протоколу перед створенням листків.
+        </p>
+        <div className="mt-4">
+          <Link
+            href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners`}
+            className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+          >
+            Перейти до співвласників
+          </Link>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 p-6">
         <h2 className="text-lg font-semibold">Видалення протоколу</h2>
         <p className="mt-2 text-sm text-neutral-600">
           Протокол буде видалено без можливості відновлення.
