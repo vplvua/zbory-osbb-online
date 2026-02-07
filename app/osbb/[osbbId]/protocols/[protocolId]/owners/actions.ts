@@ -6,10 +6,19 @@ import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { ownerSchema } from '@/lib/owner/validation';
 import { isValidPhone } from '@/lib/auth/validation';
+import { sheetCreateSchema } from '@/lib/sheet/validation';
+import { calculateSheetExpiresAt } from '@/lib/sheet/expiry';
+import { generatePublicToken } from '@/lib/tokens';
 
 export type OwnerFormState = {
   error?: string;
 };
+
+export type SheetFormState = {
+  error?: string;
+};
+
+const PUBLIC_TOKEN_RETRY_LIMIT = 3;
 
 function normalizeOptional(value?: string) {
   if (!value) return null;
@@ -41,13 +50,68 @@ async function ensureProtocolOwner(protocolId: string, userId: string) {
   });
 }
 
-async function hasSignedSheet(ownerId: string) {
-  const signed = await prisma.sheet.findFirst({
-    where: { ownerId, status: SheetStatus.SIGNED },
+async function hasAnySheet(ownerId: string) {
+  const sheet = await prisma.sheet.findFirst({
+    where: { ownerId },
     select: { id: true },
   });
 
-  return Boolean(signed);
+  return Boolean(sheet);
+}
+
+function getSheetFormData(formData: FormData) {
+  return {
+    protocolId: String(formData.get('protocolId') ?? ''),
+    ownerId: String(formData.get('ownerId') ?? ''),
+    surveyDate: String(formData.get('surveyDate') ?? ''),
+  };
+}
+
+function isPublicTokenConflict(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  if (Array.isArray(target)) {
+    return target.includes('publicToken');
+  }
+
+  if (typeof target === 'string') {
+    return target.includes('publicToken');
+  }
+
+  return false;
+}
+
+async function createSheetWithUniqueToken(data: {
+  protocolId: string;
+  ownerId: string;
+  surveyDate: Date;
+  expiresAt: Date;
+}) {
+  for (let attempt = 0; attempt < PUBLIC_TOKEN_RETRY_LIMIT; attempt += 1) {
+    try {
+      return await prisma.sheet.create({
+        data: {
+          protocolId: data.protocolId,
+          ownerId: data.ownerId,
+          surveyDate: data.surveyDate,
+          status: SheetStatus.DRAFT,
+          publicToken: generatePublicToken(),
+          expiresAt: data.expiresAt,
+        },
+      });
+    } catch (error) {
+      if (isPublicTokenConflict(error)) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error('PUBLIC_TOKEN_COLLISION');
 }
 
 function calcOwnedArea(totalArea: number, numerator: number, denominator: number) {
@@ -136,9 +200,8 @@ export async function updateOwnerAction(
     return { error: 'Співвласника не знайдено.' };
   }
 
-  if (await hasSignedSheet(owner.id)) {
-    // TODO: Refine check for signed/active sheets once implemented.
-    return { error: 'Неможливо редагувати співвласника з підписаними листками.' };
+  if (await hasAnySheet(owner.id)) {
+    return { error: 'Неможливо редагувати співвласника зі створеними листками.' };
   }
 
   const parsed = ownerSchema.safeParse(getOwnerFormData(formData));
@@ -202,12 +265,70 @@ export async function deleteOwnerAction(
     return { error: 'Співвласника не знайдено.' };
   }
 
-  if (await hasSignedSheet(owner.id)) {
-    // TODO: Refine check for signed/active sheets once implemented.
-    return { error: 'Неможливо видалити співвласника з підписаними листками.' };
+  if (await hasAnySheet(owner.id)) {
+    return { error: 'Неможливо видалити співвласника зі створеними листками.' };
   }
 
   await prisma.owner.delete({ where: { id: owner.id } });
+
+  redirect(`/osbb/${owner.protocol.osbbId}/protocols/${owner.protocolId}/owners`);
+}
+
+export async function createSheetAction(
+  _: SheetFormState,
+  formData: FormData,
+): Promise<SheetFormState> {
+  const session = await getSessionPayload();
+  if (!session) {
+    return { error: 'Потрібна авторизація.' };
+  }
+
+  const parsed = sheetCreateSchema.safeParse(getSheetFormData(formData));
+  if (!parsed.success) {
+    return { error: 'Перевірте дату опитування.' };
+  }
+
+  const owner = await prisma.owner.findFirst({
+    where: {
+      id: parsed.data.ownerId,
+      protocolId: parsed.data.protocolId,
+      protocol: {
+        osbb: { userId: session.sub, isDeleted: false },
+      },
+    },
+    include: {
+      protocol: {
+        select: {
+          id: true,
+          osbbId: true,
+          type: true,
+          date: true,
+        },
+      },
+    },
+  });
+
+  if (!owner) {
+    return { error: 'Співвласника або протокол не знайдено.' };
+  }
+
+  const surveyDate = new Date(parsed.data.surveyDate);
+  const expiresAt = calculateSheetExpiresAt(owner.protocol.date, owner.protocol.type);
+
+  if (expiresAt <= new Date()) {
+    return { error: 'Неможливо створити листок: максимальний термін опитування минув.' };
+  }
+
+  try {
+    await createSheetWithUniqueToken({
+      protocolId: owner.protocolId,
+      ownerId: owner.id,
+      surveyDate,
+      expiresAt,
+    });
+  } catch {
+    return { error: 'Не вдалося створити листок. Спробуйте ще раз.' };
+  }
 
   redirect(`/osbb/${owner.protocol.osbbId}/protocols/${owner.protocolId}/owners`);
 }
