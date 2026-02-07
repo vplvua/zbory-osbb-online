@@ -5,6 +5,7 @@ import type {
   DocumentParticipantInput,
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
+import { PermanentError, TemporaryError } from '@/lib/errors';
 
 type MockDocumentRecord = {
   id: string;
@@ -25,7 +26,9 @@ function createMockDocumentId(): string {
 function requireMockDocument(documentId: string): MockDocumentRecord {
   const document = mockDocuments.get(documentId);
   if (!document) {
-    throw new Error(`[Dubidoc mock] Document ${documentId} not found.`);
+    throw new PermanentError(`[Dubidoc mock] Document ${documentId} not found.`, {
+      code: 'DUBIDOC_MOCK_DOCUMENT_NOT_FOUND',
+    });
   }
 
   return document;
@@ -111,7 +114,9 @@ export class MockDocumentSigningService implements DocumentSigningService {
     const status = resolveStatus(document);
 
     if (status.status !== 'ORGANIZER_SIGNED') {
-      throw new Error('[Dubidoc mock] Document is not fully signed yet.');
+      throw new TemporaryError('[Dubidoc mock] Document is not fully signed yet.', {
+        code: 'DUBIDOC_MOCK_NOT_SIGNED',
+      });
     }
 
     const p7sBody = [

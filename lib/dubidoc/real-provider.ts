@@ -6,6 +6,7 @@ import type {
   DocumentStatus,
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
+import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
 
 const DUBIDOC_BASE_URL = 'https://api.dubidoc.com.ua';
 const DUBIDOC_TIMEOUT_MS = 30_000;
@@ -74,17 +75,6 @@ type RequestOptions = {
   expected: 'json' | 'bytes';
 };
 
-class DubidocHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number | null,
-    readonly retryable: boolean,
-  ) {
-    super(message);
-    this.name = 'DubidocHttpError';
-  }
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -95,16 +85,30 @@ function isRetryableStatus(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
 }
 
-function isRetryableError(error: unknown): boolean {
-  if (error instanceof DubidocHttpError) {
-    return error.retryable;
+function classifyDubidocHttpStatus(status: number, message: string) {
+  const code = `DUBIDOC_HTTP_${status}`;
+
+  if (status === 401 || status === 403) {
+    return new CriticalError(message, { code });
   }
 
-  if (error instanceof Error && error.name === 'AbortError') {
-    return true;
+  if (isRetryableStatus(status)) {
+    return new TemporaryError(message, { code });
   }
 
-  return error instanceof TypeError;
+  return new PermanentError(message, { code });
+}
+
+function classifyDubidocRequestError(error: unknown) {
+  if (error instanceof TypeError) {
+    const message = error.message.trim() || '[Dubidoc] Network request failed.';
+    return new TemporaryError(message, {
+      code: 'DUBIDOC_NETWORK_ERROR',
+      cause: error,
+    });
+  }
+
+  return classifyError(error);
 }
 
 function toDocumentFilename(title: string): string {
@@ -163,8 +167,9 @@ function mapParticipantToRequest(
   priority: number,
 ): ParticipantRequestBody {
   if (!participant.email) {
-    throw new Error(
+    throw new PermanentError(
       `[Dubidoc] Participant ${participant.fullName} is missing email. Email is required for API participant creation.`,
+      { code: 'DUBIDOC_PARTICIPANT_EMAIL_REQUIRED' },
     );
   }
 
@@ -236,11 +241,7 @@ export class DubidocApiSigningService implements DocumentSigningService {
             // Ignore parse failures and use default error message.
           }
 
-          throw new DubidocHttpError(
-            errorMessage,
-            response.status,
-            isRetryableStatus(response.status),
-          );
+          throw classifyDubidocHttpStatus(response.status, errorMessage);
         }
 
         if (options.expected === 'bytes') {
@@ -250,7 +251,8 @@ export class DubidocApiSigningService implements DocumentSigningService {
 
         return (await response.json()) as T;
       } catch (error) {
-        const shouldRetry = attempt < maxAttempts && isRetryableError(error);
+        const classified = classifyDubidocRequestError(error);
+        const shouldRetry = attempt < maxAttempts && classified instanceof TemporaryError;
         if (shouldRetry) {
           const backoff =
             DUBIDOC_RETRY_BACKOFF_MS[Math.min(attempt - 1, DUBIDOC_RETRY_BACKOFF_MS.length - 1)];
@@ -264,17 +266,15 @@ export class DubidocApiSigningService implements DocumentSigningService {
           continue;
         }
 
-        if (error instanceof Error) {
-          throw error;
-        }
-
-        throw new Error('[Dubidoc] Unknown HTTP request error.');
+        throw classified;
       } finally {
         clearTimeout(timeout);
       }
     }
 
-    throw new Error('[Dubidoc] Retry attempts exhausted.');
+    throw new TemporaryError('[Dubidoc] Retry attempts exhausted.', {
+      code: 'DUBIDOC_RETRY_EXHAUSTED',
+    });
   }
 
   async createDocument(fileBuffer: Uint8Array, title: string): Promise<DocumentCreateResult> {
@@ -294,7 +294,9 @@ export class DubidocApiSigningService implements DocumentSigningService {
 
     const parsed = createDocumentResponseSchema.safeParse(response);
     if (!parsed.success) {
-      throw new Error('[Dubidoc] Unexpected create document response format.');
+      throw new CriticalError('[Dubidoc] Unexpected create document response format.', {
+        code: 'DUBIDOC_INVALID_CREATE_RESPONSE',
+      });
     }
 
     return {
@@ -351,7 +353,9 @@ export class DubidocApiSigningService implements DocumentSigningService {
 
     const details = documentDetailsSchema.safeParse(detailsRaw);
     if (!details.success) {
-      throw new Error('[Dubidoc] Unexpected get status response format.');
+      throw new CriticalError('[Dubidoc] Unexpected get status response format.', {
+        code: 'DUBIDOC_INVALID_STATUS_RESPONSE',
+      });
     }
 
     let participants = details.data.participants ?? [];
