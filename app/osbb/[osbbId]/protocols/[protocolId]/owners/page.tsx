@@ -95,6 +95,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
     },
     orderBy: [{ createdAt: 'desc' }],
   });
+  const signedSheetsCount = sheets.filter((sheet) => sheet.status === SheetStatus.SIGNED).length;
 
   const defaultSurveyDate = new Date().toISOString().split('T')[0];
 
@@ -185,6 +186,20 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
           <CardTitle>Листки опитування</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {signedSheetsCount > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3">
+              <p className="text-sm text-emerald-800">
+                Підписано листків: <strong>{signedSheetsCount}</strong>
+              </p>
+              <a
+                href={`/api/osbb/${protocol.osbbId}/protocols/${protocol.id}/downloads/signed-zip`}
+                className="inline-flex h-9 items-center justify-center rounded-md border border-emerald-300 bg-white px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+              >
+                Завантажити ZIP підписаних листків
+              </a>
+            </div>
+          ) : null}
+
           {sheets.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               Листки для цього протоколу ще не створені.
@@ -198,12 +213,16 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                   <TableHead>Дедлайн</TableHead>
                   <TableHead>Статус</TableHead>
                   <TableHead>Публічне посилання</TableHead>
+                  <TableHead>Завантаження</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sheets.map((sheet) => {
                   const displayStatus = getDisplaySheetStatus(sheet.status, sheet.expiresAt);
                   const votePath = `/vote/${sheet.publicToken}`;
+                  const downloadBasePath = `/api/sheets/${sheet.id}/downloads`;
+                  const hasPdf = Boolean(sheet.pdfFileUrl);
+                  const isSigned = sheet.status === SheetStatus.SIGNED;
 
                   return (
                     <TableRow key={sheet.id}>
@@ -231,6 +250,42 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                         >
                           {votePath}
                         </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {hasPdf ? (
+                            <a
+                              href={`${downloadBasePath}/original`}
+                              className="text-brand text-xs underline-offset-4 hover:underline"
+                            >
+                              Оригінальний PDF
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              PDF ще не створено
+                            </span>
+                          )}
+                          {hasPdf ? (
+                            <a
+                              href={`${downloadBasePath}/visualization`}
+                              className="text-brand text-xs underline-offset-4 hover:underline"
+                            >
+                              PDF візуалізації
+                            </a>
+                          ) : null}
+                          {isSigned ? (
+                            <a
+                              href={`${downloadBasePath}/signed`}
+                              className="text-brand text-xs underline-offset-4 hover:underline"
+                            >
+                              Підписаний .p7s
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              .p7s після статусу «Підписано»
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

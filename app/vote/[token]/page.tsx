@@ -1,12 +1,11 @@
 import { SheetStatus } from '@prisma/client';
 import { notFound } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import VoteDraftSection from '@/components/vote/vote-draft-section';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA');
 
-function renderStatusBlock(status: SheetStatus) {
+function renderStatusBlock(status: SheetStatus, token: string) {
   if (status === SheetStatus.PENDING_ORGANIZER) {
     return (
       <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
@@ -19,23 +18,33 @@ function renderStatusBlock(status: SheetStatus) {
   }
 
   if (status === SheetStatus.SIGNED) {
+    const baseDownloadPath = `/api/vote/${token}/downloads`;
+
     return (
       <section className="border-border bg-surface space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Документ підписано</h2>
         <p className="text-foreground/80 text-sm">
-          Документ підписано обома сторонами. Завантаження файлів буде активовано на наступному
-          етапі.
+          Документ підписано обома сторонами. Можна завантажити підписані матеріали.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" disabled>
+          <a
+            href={`${baseDownloadPath}/original`}
+            className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
+          >
             Завантажити оригінальний PDF
-          </Button>
-          <Button type="button" variant="secondary" disabled>
-            Завантажити візуалізацію PDF
-          </Button>
-          <Button type="button" variant="secondary" disabled>
+          </a>
+          <a
+            href={`${baseDownloadPath}/visualization`}
+            className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
+          >
+            Завантажити PDF візуалізації
+          </a>
+          <a
+            href={`${baseDownloadPath}/signed`}
+            className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
+          >
             Завантажити підписаний .p7s
-          </Button>
+          </a>
         </div>
       </section>
     );
@@ -98,7 +107,7 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
           initiallyExpired={new Date(sheet.expiresAt) <= new Date()}
         />
       ) : (
-        renderStatusBlock(sheet.effectiveStatus)
+        renderStatusBlock(sheet.effectiveStatus, token)
       )}
 
       {sheet.effectiveStatus !== SheetStatus.DRAFT ? (
