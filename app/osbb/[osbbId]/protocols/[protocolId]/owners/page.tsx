@@ -240,7 +240,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
           )}
 
           <p className="text-muted-foreground text-xs">
-            PDF для листків буде додано на наступному етапі інтеграції.
+            PDF листка генерується автоматично після подання голосу співвласником.
           </p>
         </CardContent>
       </Card>
