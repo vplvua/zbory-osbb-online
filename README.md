@@ -38,6 +38,45 @@ docker compose down
 docker compose down -v
 ```
 
+## PostgreSQL read-only user for MCP
+
+Use the prepared script to create/update a dedicated read-only DB user.
+
+1. Run script (set a strong password):
+
+```bash
+docker compose exec -T db psql -U postgres -d zbory_dev \
+  -v ro_user='zbory_ro' \
+  -v ro_password='REPLACE_WITH_STRONG_PASSWORD' \
+  -v db_name='zbory_dev' \
+  -v schema_name='public' \
+  -v migrator_role='postgres' \
+  -f /dev/stdin < scripts/db/create_readonly_user.sql
+```
+
+1. Verify read-only behavior:
+
+```bash
+docker compose exec db psql "postgresql://zbory_ro:REPLACE_WITH_STRONG_PASSWORD@localhost:5432/zbory_dev" -c "SELECT now();"
+docker compose exec db psql "postgresql://zbory_ro:REPLACE_WITH_STRONG_PASSWORD@localhost:5432/zbory_dev" -c "CREATE TABLE _deny_test(id int);"
+```
+
+Expected: first command succeeds, second command fails with `permission denied`.
+
+1. Configure Codex MCP server (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.postgres_ro]
+command = "npx"
+args = [
+  "-y",
+  "@modelcontextprotocol/server-postgres",
+  "postgresql://zbory_ro:REPLACE_WITH_STRONG_PASSWORD@localhost:5432/zbory_dev?schema=public"
+]
+```
+
+If your migrations are applied by a role different from `postgres`, pass that role via `-v migrator_role='your_role'`.
+
 ## Local environment
 
 1. Copy `.env.example` to `.env.local`:
