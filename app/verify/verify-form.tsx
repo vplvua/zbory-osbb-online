@@ -33,7 +33,7 @@ export default function VerifyForm({ initialPhone }: VerifyFormProps) {
         return;
       }
 
-      router.push('/dashboard');
+      router.push('/osbb');
     } catch {
       setError('Сталася помилка. Спробуйте ще раз.');
     } finally {

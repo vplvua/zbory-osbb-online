@@ -48,6 +48,24 @@ cp .env.example .env.local
 
 1. `DATABASE_URL` points to your local Postgres instance (default: `localhost:5432`).
 
+## Integrations keys mode (MVP)
+
+MVP uses a single global set of integration credentials from environment variables for the whole app:
+
+- `DUBIDOC_API_KEY`
+- `DUBIDOC_ORG_ID`
+- `TURBOSMS_API_KEY`
+- `TURBOSMS_SENDER`
+- `OPENAI_API_KEY` (Stage 2)
+
+Per-user integration keys are intentionally hidden from the settings UI in MVP to avoid confusion.
+
+The prepared UI component is kept for future iterations:
+
+- `app/dashboard/settings/integrations-settings-section.tsx`
+
+Enable it only after a product decision based on user feedback that per-user integrations are needed.
+
 ## Prisma quickstart
 
 1. Install dependencies:

@@ -9,6 +9,8 @@ const SettingsSchema = z.object({
   organizerEmail: z.string().trim().email().optional().or(z.literal('')),
   organizerPhone: z.string().trim().optional().or(z.literal('')),
   organizerPosition: z.string().trim().max(200).optional().or(z.literal('')),
+  // Integration keys are kept for future per-user mode.
+  // MVP runtime uses global env keys for all users.
   dubidocApiKey: z.string().trim().max(500).optional().or(z.literal('')),
   dubidocOrgId: z.string().trim().max(200).optional().or(z.literal('')),
   turboSmsApiKey: z.string().trim().max(500).optional().or(z.literal('')),
