@@ -21,6 +21,9 @@ export type VoteSheetDto = {
   id: string;
   status: SheetStatus;
   effectiveStatus: SheetStatus;
+  pdfUploadPending: boolean;
+  errorPending: boolean;
+  hasPdfFile: boolean;
   surveyDate: string;
   createdAt: string;
   expiresAt: string;

@@ -209,7 +209,10 @@ model Sheet {
   dubidocDocumentId String? @unique
 
   // PDF
-  pdfFileUrl String?
+  pdfFileUrl       String?
+  pdfUploadPending Boolean @default(false)
+  errorPending     Boolean @default(false)
+  pdfLastError     String?
 
   // Підписання (новий порядок: спочатку співвласник, потім відповідальна особа)
   ownerSignedAt     DateTime?

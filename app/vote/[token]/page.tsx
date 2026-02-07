@@ -5,14 +5,37 @@ import { getVoteSheetByToken } from '@/lib/vote/sheet';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA');
 
-function renderStatusBlock(status: SheetStatus, token: string) {
+function renderStatusBlock(
+  status: SheetStatus,
+  token: string,
+  options: {
+    pdfUploadPending: boolean;
+    errorPending: boolean;
+    hasPdfFile: boolean;
+  },
+) {
   if (status === SheetStatus.PENDING_ORGANIZER) {
     return (
-      <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-        <h2 className="text-lg font-semibold text-emerald-800">Голос прийнято</h2>
-        <p className="mt-2 text-sm text-emerald-800">
-          Дякуємо! Ваш голос прийнято. Очікуємо підпису уповноваженої особи.
-        </p>
+      <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+        <div>
+          <h2 className="text-lg font-semibold text-emerald-800">Голос прийнято</h2>
+          <p className="mt-2 text-sm text-emerald-800">
+            Дякуємо! Ваш голос прийнято. Очікуємо підпису уповноваженої особи.
+          </p>
+        </div>
+
+        {options.pdfUploadPending ? (
+          <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            Формуємо PDF листка. Завантаження буде доступне після завершення обробки.
+          </p>
+        ) : null}
+
+        {options.errorPending ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Сталася помилка під час підготовки PDF. Уповноважена особа може запустити повторну
+            обробку в кабінеті ОСББ.
+          </p>
+        ) : null}
       </section>
     );
   }
@@ -26,19 +49,38 @@ function renderStatusBlock(status: SheetStatus, token: string) {
         <p className="text-foreground/80 text-sm">
           Документ підписано обома сторонами. Можна завантажити підписані матеріали.
         </p>
+        {options.pdfUploadPending ? (
+          <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            PDF ще формується. Спробуйте завантажити файли трохи пізніше.
+          </p>
+        ) : null}
+        {options.errorPending ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Підготовка PDF завершилась з помилкою. Уповноважена особа може повторити обробку в
+            кабінеті ОСББ.
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
-          <a
-            href={`${baseDownloadPath}/original`}
-            className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
-          >
-            Завантажити оригінальний PDF
-          </a>
-          <a
-            href={`${baseDownloadPath}/visualization`}
-            className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
-          >
-            Завантажити PDF візуалізації
-          </a>
+          {options.hasPdfFile ? (
+            <a
+              href={`${baseDownloadPath}/original`}
+              className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
+            >
+              Завантажити оригінальний PDF
+            </a>
+          ) : (
+            <span className="text-muted-foreground inline-flex h-10 items-center text-sm">
+              Оригінальний PDF ще недоступний
+            </span>
+          )}
+          {options.hasPdfFile ? (
+            <a
+              href={`${baseDownloadPath}/visualization`}
+              className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
+            >
+              Завантажити PDF візуалізації
+            </a>
+          ) : null}
           <a
             href={`${baseDownloadPath}/signed`}
             className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
@@ -107,7 +149,11 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
           initiallyExpired={new Date(sheet.expiresAt) <= new Date()}
         />
       ) : (
-        renderStatusBlock(sheet.effectiveStatus, token)
+        renderStatusBlock(sheet.effectiveStatus, token, {
+          pdfUploadPending: sheet.pdfUploadPending,
+          errorPending: sheet.errorPending,
+          hasPdfFile: sheet.hasPdfFile,
+        })
       )}
 
       {sheet.effectiveStatus !== SheetStatus.DRAFT ? (

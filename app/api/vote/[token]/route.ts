@@ -1,13 +1,11 @@
 import { SheetStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { generateVoteSheetPdf, writeVoteSheetPdfToTemp } from '@/lib/pdf/vote-sheet';
+import { generateAndStoreSheetPdf, PDF_TARGET_MS } from '@/lib/sheet/pdf-processing';
 import { isValidPublicToken } from '@/lib/tokens';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
 import type { VoteSheetResponseDto, VoteSubmitResponseDto } from '@/lib/vote/types';
 import { voteSubmitSchema } from '@/lib/vote/validation';
-
-const PDF_TARGET_MS = 3000;
 
 async function markDraftAsExpired(sheetId: string) {
   await prisma.sheet.updateMany({
@@ -42,120 +40,6 @@ function validateAnswerSet(
   }
 
   return { ok: true };
-}
-
-async function generateAndStoreSheetPdf(sheetId: string) {
-  const sheet = await prisma.sheet.findUnique({
-    where: { id: sheetId },
-    select: {
-      id: true,
-      surveyDate: true,
-      owner: {
-        select: {
-          fullName: true,
-          apartmentNumber: true,
-          totalArea: true,
-          ownershipDocument: true,
-          ownershipNumerator: true,
-          ownershipDenominator: true,
-          ownedArea: true,
-          representativeName: true,
-          representativeDocument: true,
-        },
-      },
-      protocol: {
-        select: {
-          number: true,
-          date: true,
-          osbb: {
-            select: {
-              name: true,
-              address: true,
-              user: {
-                select: {
-                  settings: {
-                    select: {
-                      organizerName: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          questions: {
-            select: {
-              id: true,
-              orderNumber: true,
-              text: true,
-              proposal: true,
-            },
-            orderBy: {
-              orderNumber: 'asc',
-            },
-          },
-        },
-      },
-      answers: {
-        select: {
-          questionId: true,
-          vote: true,
-        },
-      },
-    },
-  });
-
-  if (!sheet) {
-    return;
-  }
-
-  const answerMap = new Map(sheet.answers.map((answer) => [answer.questionId, answer.vote]));
-  const pdfResult = await generateVoteSheetPdf({
-    sheetId: sheet.id,
-    generatedAt: new Date(),
-    surveyDate: sheet.surveyDate,
-    protocol: {
-      number: sheet.protocol.number,
-      date: sheet.protocol.date,
-    },
-    osbb: {
-      name: sheet.protocol.osbb.name,
-      address: sheet.protocol.osbb.address,
-    },
-    owner: {
-      fullName: sheet.owner.fullName,
-      apartmentNumber: sheet.owner.apartmentNumber,
-      totalArea: sheet.owner.totalArea.toString(),
-      ownershipDocument: sheet.owner.ownershipDocument,
-      ownershipNumerator: sheet.owner.ownershipNumerator,
-      ownershipDenominator: sheet.owner.ownershipDenominator,
-      ownedArea: sheet.owner.ownedArea.toString(),
-      representativeName: sheet.owner.representativeName,
-      representativeDocument: sheet.owner.representativeDocument,
-    },
-    organizerName: sheet.protocol.osbb.user.settings?.organizerName ?? '',
-    questions: sheet.protocol.questions.map((question) => ({
-      orderNumber: question.orderNumber,
-      text: question.text,
-      proposal: question.proposal,
-      vote: answerMap.get(question.id) ?? null,
-    })),
-  });
-
-  const pdfFilePath = await writeVoteSheetPdfToTemp({
-    sheetId: sheet.id,
-    pdfBytes: pdfResult.pdfBytes,
-  });
-
-  await prisma.sheet.update({
-    where: { id: sheet.id },
-    data: { pdfFileUrl: pdfFilePath },
-  });
-
-  if (pdfResult.generationMs > PDF_TARGET_MS) {
-    console.warn(
-      `[pdf] Sheet ${sheet.id} generated in ${pdfResult.generationMs}ms (target ${PDF_TARGET_MS}ms)`,
-    );
-  }
 }
 
 export async function GET(
@@ -297,10 +181,16 @@ export async function POST(
     );
   }
 
-  try {
-    await generateAndStoreSheetPdf(sheet.id);
-  } catch (error) {
-    console.error('[pdf] failed to generate sheet pdf', { sheetId: sheet.id, error });
+  const pdfResult = await generateAndStoreSheetPdf(sheet.id);
+  if (!pdfResult.ok) {
+    console.error('[pdf] failed to generate sheet pdf', {
+      sheetId: sheet.id,
+      message: pdfResult.message,
+    });
+  } else if (pdfResult.generationMs > PDF_TARGET_MS) {
+    console.warn(
+      `[pdf] Sheet ${sheet.id} generated in ${pdfResult.generationMs}ms (target ${PDF_TARGET_MS}ms)`,
+    );
   }
 
   const updatedSheet = await getVoteSheetByToken(token);

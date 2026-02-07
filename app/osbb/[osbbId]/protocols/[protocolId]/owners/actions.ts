@@ -9,6 +9,7 @@ import { isValidPhone } from '@/lib/auth/validation';
 import { sheetCreateSchema } from '@/lib/sheet/validation';
 import { calculateSheetExpiresAt } from '@/lib/sheet/expiry';
 import { generatePublicToken } from '@/lib/tokens';
+import { generateAndStoreSheetPdf } from '@/lib/sheet/pdf-processing';
 
 export type OwnerFormState = {
   error?: string;
@@ -331,4 +332,65 @@ export async function createSheetAction(
   }
 
   redirect(`/osbb/${owner.protocol.osbbId}/protocols/${owner.protocolId}/owners`);
+}
+
+export async function retrySheetPdfAction(
+  _: SheetFormState,
+  formData: FormData,
+): Promise<SheetFormState> {
+  const session = await getSessionPayload();
+  if (!session) {
+    return { error: 'Потрібна авторизація.' };
+  }
+
+  const sheetId = String(formData.get('sheetId') ?? '');
+  if (!sheetId) {
+    return { error: 'Листок не знайдено.' };
+  }
+
+  const sheet = await prisma.sheet.findFirst({
+    where: {
+      id: sheetId,
+      protocol: {
+        osbb: { userId: session.sub, isDeleted: false },
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+      pdfFileUrl: true,
+      pdfUploadPending: true,
+      protocolId: true,
+      protocol: {
+        select: {
+          osbbId: true,
+        },
+      },
+    },
+  });
+
+  if (!sheet) {
+    return { error: 'Листок не знайдено.' };
+  }
+
+  if (sheet.pdfUploadPending) {
+    return { error: 'Обробка PDF вже виконується. Спробуйте трохи пізніше.' };
+  }
+
+  if (sheet.status === SheetStatus.DRAFT) {
+    return {
+      error: 'Повторна генерація PDF доступна лише після подання голосу співвласником.',
+    };
+  }
+
+  if (sheet.status === SheetStatus.EXPIRED && !sheet.pdfFileUrl) {
+    return { error: 'Листок прострочений. Повторна генерація PDF недоступна.' };
+  }
+
+  const result = await generateAndStoreSheetPdf(sheet.id);
+  if (!result.ok) {
+    return { error: 'Не вдалося сформувати PDF. Спробуйте ще раз.' };
+  }
+
+  redirect(`/osbb/${sheet.protocol.osbbId}/protocols/${sheet.protocolId}/owners`);
 }

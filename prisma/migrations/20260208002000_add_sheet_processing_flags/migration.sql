@@ -1,0 +1,4 @@
+ALTER TABLE "Sheet"
+ADD COLUMN "pdfUploadPending" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "errorPending" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "pdfLastError" TEXT;

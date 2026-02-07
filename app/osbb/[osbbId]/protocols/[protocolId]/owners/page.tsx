@@ -3,8 +3,12 @@ import { redirect } from 'next/navigation';
 import { SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
-import { createSheetAction } from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/actions';
+import {
+  createSheetAction,
+  retrySheetPdfAction,
+} from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/actions';
 import SheetCreateForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_components/sheet-create-form';
+import SheetRetryForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_components/sheet-retry-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -223,6 +227,9 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                   const downloadBasePath = `/api/sheets/${sheet.id}/downloads`;
                   const hasPdf = Boolean(sheet.pdfFileUrl);
                   const isSigned = sheet.status === SheetStatus.SIGNED;
+                  const canRetryPdf =
+                    !sheet.pdfUploadPending &&
+                    (sheet.errorPending || (sheet.status !== SheetStatus.DRAFT && !hasPdf));
 
                   return (
                     <TableRow key={sheet.id}>
@@ -253,6 +260,17 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
+                          {sheet.pdfUploadPending ? (
+                            <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-800">
+                              PDF формується
+                            </span>
+                          ) : null}
+                          {sheet.errorPending ? (
+                            <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                              Помилка підготовки PDF
+                            </span>
+                          ) : null}
+
                           {hasPdf ? (
                             <a
                               href={`${downloadBasePath}/original`}
@@ -262,7 +280,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                             </a>
                           ) : (
                             <span className="text-muted-foreground text-xs">
-                              PDF ще не створено
+                              PDF ще недоступний
                             </span>
                           )}
                           {hasPdf ? (
@@ -285,6 +303,9 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                               .p7s після статусу «Підписано»
                             </span>
                           )}
+                          {canRetryPdf ? (
+                            <SheetRetryForm action={retrySheetPdfAction} sheetId={sheet.id} />
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
