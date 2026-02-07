@@ -172,7 +172,9 @@ import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
 Provider selection:
 
 - Mock provider is used by default (no real HTTP calls).
-- Stub real provider is used only when both `DUBIDOC_API_KEY` and `DUBIDOC_ORG_ID` are set to non-empty, non-placeholder values.
+- Real provider is used only when both `DUBIDOC_API_KEY` and `DUBIDOC_ORG_ID` are set to non-empty, non-placeholder values.
+- Real provider base URL is fixed to `https://api.dubidoc.com.ua` (PRD default).
+- Callback URL is taken from `DUBIDOC_CALLBACK_URL` or falls back to `${NEXTAUTH_URL}/api/webhooks/dubidoc`.
 
 To run in mock mode, keep these values empty in `.env.local` (or remove them):
 

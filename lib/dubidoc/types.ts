@@ -5,6 +5,7 @@ export type DocumentParticipantInput = {
   fullName: string;
   email?: string;
   phone?: string;
+  edrpou?: string;
 };
 
 export type DocumentStatus = 'CREATED' | 'OWNER_SIGNED' | 'ORGANIZER_SIGNED';

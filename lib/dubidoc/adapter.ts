@@ -32,9 +32,16 @@ export function isDubidocConfigured(): boolean {
 
 export function getDocumentSigningService(): DocumentSigningService {
   if (isDubidocConfigured()) {
+    const callbackUrl =
+      process.env.DUBIDOC_CALLBACK_URL?.trim() ||
+      (process.env.NEXTAUTH_URL
+        ? `${process.env.NEXTAUTH_URL.replace(/\/+$/, '')}/api/webhooks/dubidoc`
+        : undefined);
+
     return new DubidocApiSigningService({
       apiKey: process.env.DUBIDOC_API_KEY!.trim(),
       orgId: process.env.DUBIDOC_ORG_ID!.trim(),
+      callbackUrl,
     });
   }
 
