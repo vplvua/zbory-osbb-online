@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { Button } from '@/components/ui/button';
+import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import type { OwnerFormState } from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/actions';
 
 const initialState: OwnerFormState = {};
@@ -18,9 +18,13 @@ export default function OwnerDeleteForm({ ownerId, action }: OwnerDeleteFormProp
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="ownerId" value={ownerId} />
       {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
-      <Button type="submit" variant="destructive">
+      <ConfirmSubmitButton
+        type="submit"
+        variant="destructive"
+        confirmMessage="Ви впевнені, що хочете видалити цього співвласника?"
+      >
         Видалити співвласника
-      </Button>
+      </ConfirmSubmitButton>
     </form>
   );
 }

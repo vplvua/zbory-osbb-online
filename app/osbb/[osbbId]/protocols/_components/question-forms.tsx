@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -127,14 +128,15 @@ export function QuestionItemForm({ action, deleteAction, question }: QuestionIte
 
           <div className="flex flex-wrap gap-3">
             <Button type="submit">Зберегти питання</Button>
-            <Button
+            <ConfirmSubmitButton
               type="submit"
               variant="destructive"
               formAction={deleteFormAction}
               formNoValidate
+              confirmMessage="Видалене питання не можна відновити."
             >
               Видалити
-            </Button>
+            </ConfirmSubmitButton>
           </div>
 
           {deleteState.error ? (

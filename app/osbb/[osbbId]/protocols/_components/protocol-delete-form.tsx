@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { Button } from '@/components/ui/button';
+import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
 
 const initialState: ProtocolFormState = {};
@@ -18,9 +18,13 @@ export default function DeleteProtocolForm({ protocolId, action }: ProtocolDelet
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="protocolId" value={protocolId} />
       {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
-      <Button type="submit" variant="destructive">
+      <ConfirmSubmitButton
+        type="submit"
+        variant="destructive"
+        confirmMessage="Ви впевнені, що хочете видалити цей протокол?"
+      >
         Видалити протокол
-      </Button>
+      </ConfirmSubmitButton>
     </form>
   );
 }

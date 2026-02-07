@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { Button } from '@/components/ui/button';
+import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import type { OsbbFormState } from '@/app/osbb/actions';
 
 const initialState: OsbbFormState = {};
@@ -18,9 +18,13 @@ export default function OsbbDeleteForm({ action, id }: OsbbDeleteFormProps) {
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="id" value={id} />
       {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
-      <Button type="submit" variant="destructive">
+      <ConfirmSubmitButton
+        type="submit"
+        variant="destructive"
+        confirmMessage="Ви впевнені, що хочете видалити це ОСББ?"
+      >
         Видалити ОСББ
-      </Button>
+      </ConfirmSubmitButton>
     </form>
   );
 }
