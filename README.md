@@ -187,6 +187,24 @@ Mock signing simulation:
 - call 2: `OWNER_SIGNED`
 - call 3+: `ORGANIZER_SIGNED`
 
+Webhook endpoint:
+
+- Production webhook URL: `POST /api/webhooks/dubidoc`
+- Optional temporary guard: set `DUBIDOC_WEBHOOK_SECRET` and send it in `x-dubidoc-webhook-secret` header.
+
+Mock webhook simulation (dev only):
+
+- URL: `POST /api/dev/dubidoc/mock-webhook`
+- Works only when real Dubidoc mode is disabled (mock provider active).
+
+Example:
+
+```bash
+curl -X POST http://localhost:3000/api/dev/dubidoc/mock-webhook \
+  -H "content-type: application/json" \
+  -d '{"documentId":"mock-doc-123","event":"OWNER_SIGNED"}'
+```
+
 ## SMS login (MVP)
 
 Minimal OTP flow is available at:
