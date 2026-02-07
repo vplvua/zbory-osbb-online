@@ -38,7 +38,7 @@ export default async function OwnerNewPage({
             ← Назад до співвласників
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold">Новий співвласник</h1>
+        <h1 className="text-2xl font-semibold">Новий співвласник ОСББ</h1>
       </div>
 
       <OwnerForm action={createOwnerAction} submitLabel="Додати" defaultValues={{ protocolId }} />

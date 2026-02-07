@@ -91,7 +91,7 @@ export default async function ProtocolEditPage({
       <section className="border-border rounded-lg border p-6">
         <h2 className="text-lg font-semibold">Співвласники</h2>
         <p className="text-muted-foreground mt-2 text-sm">
-          Додайте співвласників для цього протоколу перед створенням листків.
+          Оберіть співвласників з реєстру ОСББ або створіть нового, після чого сформуйте листки.
         </p>
         <div className="mt-4">
           <Link

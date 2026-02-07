@@ -4,11 +4,15 @@ import { SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import {
+  attachOwnerToProtocolAction,
   createSheetAction,
   retrySheetPdfAction,
+  deleteSheetAction,
 } from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/actions';
+import OwnerAttachForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_components/owner-attach-form';
 import SheetCreateForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_components/sheet-create-form';
 import SheetRetryForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_components/sheet-retry-form';
+import SheetDeleteForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_components/sheet-delete-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -71,19 +75,44 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
     redirect('/osbb');
   }
 
-  const owners = await prisma.owner.findMany({
+  const protocolOwners = await prisma.protocolOwner.findMany({
     where: {
       protocolId: protocol.id,
-      ...(query
-        ? {
-            fullName: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          }
-        : {}),
+      owner: {
+        osbbId: protocol.osbbId,
+        ...(query
+          ? {
+              fullName: {
+                contains: query,
+                mode: 'insensitive',
+              },
+            }
+          : {}),
+      },
     },
-    orderBy: { createdAt: 'desc' },
+    include: {
+      owner: true,
+    },
+    orderBy: [{ createdAt: 'desc' }],
+  });
+
+  const owners = protocolOwners.map((protocolOwner) => protocolOwner.owner);
+
+  const availableOwners = await prisma.owner.findMany({
+    where: {
+      osbbId: protocol.osbbId,
+      protocolOwners: {
+        none: {
+          protocolId: protocol.id,
+        },
+      },
+    },
+    select: {
+      id: true,
+      fullName: true,
+      apartmentNumber: true,
+    },
+    orderBy: [{ fullName: 'asc' }, { apartmentNumber: 'asc' }],
   });
 
   const sheets = await prisma.sheet.findMany({
@@ -99,8 +128,8 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
     },
     orderBy: [{ createdAt: 'desc' }],
   });
-  const signedSheetsCount = sheets.filter((sheet) => sheet.status === SheetStatus.SIGNED).length;
 
+  const signedSheetsCount = sheets.filter((sheet) => sheet.status === SheetStatus.SIGNED).length;
   const defaultSurveyDate = new Date().toISOString().split('T')[0];
 
   return (
@@ -116,14 +145,14 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
         </p>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Співвласники</h1>
+            <h1 className="text-2xl font-semibold">Співвласники протоколу</h1>
             <p className="text-muted-foreground text-sm">{protocol.osbb.name}</p>
           </div>
           <Link
             href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners/new`}
             className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
           >
-            Додати співвласника
+            Створити нового співвласника
           </Link>
         </div>
       </div>
@@ -133,6 +162,21 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
           <CardTitle>Список співвласників</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="border-border space-y-2 rounded-md border p-4">
+            <h3 className="font-medium">Додати співвласника до протоколу</h3>
+            {availableOwners.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Усі співвласники цього ОСББ вже додані до протоколу.
+              </p>
+            ) : (
+              <OwnerAttachForm
+                action={attachOwnerToProtocolAction}
+                protocolId={protocol.id}
+                owners={availableOwners}
+              />
+            )}
+          </div>
+
           <form className="flex flex-wrap items-center gap-3" method="get">
             <Input name="q" placeholder="Пошук за ПІБ" defaultValue={query} className="md:w-64" />
             <Button type="submit" variant="outline">
@@ -141,7 +185,9 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
           </form>
 
           {owners.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Співвласників ще не додано.</p>
+            <p className="text-muted-foreground text-sm">
+              До цього протоколу ще не додано співвласників.
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -218,6 +264,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                   <TableHead>Статус</TableHead>
                   <TableHead>Публічне посилання</TableHead>
                   <TableHead>Завантаження</TableHead>
+                  <TableHead className="text-right">Видалити</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -230,6 +277,10 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                   const canRetryPdf =
                     !sheet.pdfUploadPending &&
                     (sheet.errorPending || (sheet.status !== SheetStatus.DRAFT && !hasPdf));
+                  const canDeleteSheet =
+                    (sheet.status === SheetStatus.DRAFT || sheet.status === SheetStatus.EXPIRED) &&
+                    sheet.ownerSignedAt === null &&
+                    sheet.organizerSignedAt === null;
 
                   return (
                     <TableRow key={sheet.id}>
@@ -307,6 +358,13 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                             <SheetRetryForm action={retrySheetPdfAction} sheetId={sheet.id} />
                           ) : null}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right align-top">
+                        {canDeleteSheet ? (
+                          <SheetDeleteForm action={deleteSheetAction} sheetId={sheet.id} />
+                        ) : (
+                          <span className="text-muted-foreground text-xs">Недоступно</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

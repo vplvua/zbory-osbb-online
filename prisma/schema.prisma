@@ -16,26 +16,26 @@ enum UserRole {
 
 enum ProtocolType {
   ESTABLISHMENT // Установчі збори
-  GENERAL       // Загальні збори
+  GENERAL // Загальні збори
 }
 
 enum ConsentStatus {
-  NONE         // Згода не надсилалась
+  NONE // Згода не надсилалась
   NOT_REQUIRED // Позначено що згода вже є (підписана раніше)
-  PENDING      // Надіслано, очікує підпису
-  SIGNED       // Підписано
-  EXPIRED      // Термін минув
+  PENDING // Надіслано, очікує підпису
+  SIGNED // Підписано
+  EXPIRED // Термін минув
 }
 
 enum SheetStatus {
-  DRAFT             // Створено, очікує дій співвласника
+  DRAFT // Створено, очікує дій співвласника
   PENDING_ORGANIZER // Співвласник підписав, очікує відповідальної особи
-  SIGNED            // Підписано обома
-  EXPIRED           // Термін минув
+  SIGNED // Підписано обома
+  EXPIRED // Термін минув
 }
 
 enum Vote {
-  FOR     // За
+  FOR // За
   AGAINST // Проти
 }
 
@@ -58,14 +58,14 @@ model User {
 }
 
 model SmsOtp {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   phone     String
   codeHash  String
   expiresAt DateTime
-  attempts  Int      @default(0)
+  attempts  Int       @default(0)
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([phone, expiresAt])
   @@index([phone, createdAt])
@@ -118,6 +118,7 @@ model OSBB {
   updatedAt DateTime @updatedAt
 
   protocols Protocol[]
+  owners    Owner[]
 
   @@index([userId])
 }
@@ -134,15 +135,15 @@ model Protocol {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  questions Question[]
-  owners    Owner[]
-  sheets    Sheet[]
+  questions      Question[]
+  protocolOwners ProtocolOwner[]
+  sheets         Sheet[]
 
   @@index([osbbId])
 }
 
 model Question {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   protocolId String
   protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
 
@@ -160,16 +161,16 @@ model Question {
 }
 
 model Owner {
-  id         String @id @default(cuid())
-  protocolId String
-  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  osbbId String
+  osbb   OSBB   @relation(fields: [osbbId], references: [id], onDelete: Cascade)
 
-  fullName              String
-  apartmentNumber       String
-  totalArea             Decimal @db.Decimal(10, 2)
-  ownershipNumerator    Int
-  ownershipDenominator  Int
-  ownedArea             Decimal @db.Decimal(10, 2)
+  fullName             String
+  apartmentNumber      String
+  totalArea            Decimal @db.Decimal(10, 2)
+  ownershipNumerator   Int
+  ownershipDenominator Int
+  ownedArea            Decimal @db.Decimal(10, 2)
 
   ownershipDocument String // Обов'язкове поле (документ права власності)
   email             String?
@@ -187,17 +188,33 @@ model Owner {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sheets Sheet[]
+  protocolOwners ProtocolOwner[]
+  sheets         Sheet[]
 
-  @@index([protocolId])
+  @@index([osbbId])
 }
 
-model Sheet {
-  id         String @id @default(cuid())
+model ProtocolOwner {
+  id         String   @id @default(cuid())
   protocolId String
   protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
   ownerId    String
-  owner      Owner   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner      Owner    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([protocolId, ownerId])
+  @@index([protocolId])
+  @@index([ownerId])
+}
+
+model Sheet {
+  id         String   @id @default(cuid())
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  ownerId    String
+  owner      Owner    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   surveyDate DateTime
   status     SheetStatus @default(DRAFT)
@@ -226,14 +243,15 @@ model Sheet {
 
   answers Answer[]
 
+  @@unique([protocolId, ownerId])
   @@index([protocolId])
   @@index([ownerId])
 }
 
 model Answer {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   sheetId    String
-  sheet      Sheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  sheet      Sheet    @relation(fields: [sheetId], references: [id], onDelete: Cascade)
   questionId String
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

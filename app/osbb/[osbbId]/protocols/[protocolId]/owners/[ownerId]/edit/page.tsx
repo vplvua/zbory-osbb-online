@@ -20,21 +20,46 @@ export default async function OwnerEditPage({
   }
 
   const { osbbId, protocolId, ownerId } = await params;
-  const owner = await prisma.owner.findFirst({
+
+  const protocol = await prisma.protocol.findFirst({
     where: {
-      id: ownerId,
-      protocol: {
-        id: protocolId,
-        osbb: { id: osbbId, userId: session.sub, isDeleted: false },
+      id: protocolId,
+      osbb: {
+        id: osbbId,
+        userId: session.sub,
+        isDeleted: false,
       },
     },
-    include: {
-      protocol: true,
+    select: {
+      id: true,
+      osbbId: true,
     },
   });
 
-  if (!owner) {
+  if (!protocol) {
     redirect('/osbb');
+  }
+
+  const [owner, protocolOwner] = await Promise.all([
+    prisma.owner.findFirst({
+      where: {
+        id: ownerId,
+        osbbId: protocol.osbbId,
+      },
+    }),
+    prisma.protocolOwner.findFirst({
+      where: {
+        protocolId: protocol.id,
+        ownerId,
+      },
+      select: {
+        id: true,
+      },
+    }),
+  ]);
+
+  if (!owner || !protocolOwner) {
+    redirect(`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners`);
   }
 
   return (
@@ -42,7 +67,7 @@ export default async function OwnerEditPage({
       <div className="space-y-2">
         <p className="text-muted-foreground text-sm">
           <Link
-            href={`/osbb/${owner.protocol.osbbId}/protocols/${owner.protocolId}/owners`}
+            href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners`}
             className="text-brand underline-offset-4 hover:underline"
           >
             ← Назад до співвласників
@@ -56,6 +81,7 @@ export default async function OwnerEditPage({
         submitLabel="Зберегти"
         defaultValues={{
           ownerId: owner.id,
+          protocolId: protocol.id,
           fullName: owner.fullName,
           apartmentNumber: owner.apartmentNumber,
           totalArea: owner.totalArea.toString(),
@@ -70,12 +96,13 @@ export default async function OwnerEditPage({
       />
 
       <div className="border-border rounded-lg border p-6">
-        <h2 className="text-lg font-semibold">Видалення</h2>
+        <h2 className="text-lg font-semibold">Видалення з протоколу</h2>
         <p className="text-muted-foreground mt-2 text-sm">
-          Співвласник буде видалений без можливості відновлення.
+          Співвласник буде видалений лише з поточного протоколу. Дані співвласника в ОСББ
+          залишаться.
         </p>
         <div className="mt-4">
-          <OwnerDeleteForm action={deleteOwnerAction} ownerId={owner.id} />
+          <OwnerDeleteForm action={deleteOwnerAction} ownerId={owner.id} protocolId={protocol.id} />
         </div>
       </div>
     </main>
