@@ -1,4 +1,5 @@
-import { CriticalError, PermanentError } from '@/lib/errors';
+import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
+import { retryPresets, withRetry } from '@/lib/retry/withRetry';
 
 export interface SmsService {
   sendCode(phone: string, code: string): Promise<boolean>;
@@ -27,12 +28,22 @@ function assertSmsPayload(phone: string, code: string): void {
 }
 
 export class TurboSmsAdapter implements SmsService {
-  async sendCode(phone: string, code: string): Promise<boolean> {
-    assertSmsPayload(phone, code);
+  private async sendWithProvider(_phone: string, _code: string): Promise<boolean> {
+    void _phone;
+    void _code;
 
     // TODO: Implement real TurboSMS API call.
     throw new CriticalError('[TurboSMS] Real provider adapter is not implemented yet.', {
       code: 'TURBOSMS_NOT_IMPLEMENTED',
+    });
+  }
+
+  async sendCode(phone: string, code: string): Promise<boolean> {
+    assertSmsPayload(phone, code);
+
+    return withRetry(async () => this.sendWithProvider(phone, code), {
+      ...retryPresets.turbosms,
+      shouldRetry: (error) => classifyError(error) instanceof TemporaryError,
     });
   }
 }

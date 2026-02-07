@@ -5,6 +5,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
 import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
 import type { VoteSheetPdfInput, VoteSheetPdfResult } from '@/lib/pdf/types';
+import { retryPresets, withRetry } from '@/lib/retry/withRetry';
 
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
@@ -206,106 +207,120 @@ function toPdfOperationError(operation: 'generate' | 'write', error: unknown) {
 
 export async function generateVoteSheetPdf(input: VoteSheetPdfInput): Promise<VoteSheetPdfResult> {
   try {
-    const startedAt = Date.now();
-    const pdfDoc = await PDFDocument.create();
-    pdfDoc.registerFontkit(fontkit);
+    return await withRetry(
+      async () => {
+        const startedAt = Date.now();
+        const pdfDoc = await PDFDocument.create();
+        pdfDoc.registerFontkit(fontkit);
 
-    const customFontBytes = await loadFirstAvailableFont();
-    const font = customFontBytes
-      ? await pdfDoc.embedFont(customFontBytes, { subset: true })
-      : await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const supportsUnicode = customFontBytes !== null;
+        const customFontBytes = await loadFirstAvailableFont();
+        const font = customFontBytes
+          ? await pdfDoc.embedFont(customFontBytes, { subset: true })
+          : await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const supportsUnicode = customFontBytes !== null;
 
-    const context: DrawingContext = {
-      pdfDoc,
-      page: pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]),
-      font,
-      supportsUnicode,
-      createdAtLabel: formatDateTime(input.generatedAt),
-      cursorY: PAGE_TOP_Y,
-    };
+        const context: DrawingContext = {
+          pdfDoc,
+          page: pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]),
+          font,
+          supportsUnicode,
+          createdAtLabel: formatDateTime(input.generatedAt),
+          cursorY: PAGE_TOP_Y,
+        };
 
-    drawPageHeader(context);
+        drawPageHeader(context);
 
-    drawWrappedParagraph(context, 'ДОДАТОК', { fontSize: TITLE_SIZE, gapAfter: 4 });
-    drawWrappedParagraph(context, 'до протоколу загальних зборів співвласників', { gapAfter: 2 });
-    drawWrappedParagraph(context, `ОСББ "${input.osbb.name}"`, { gapAfter: 2 });
-    drawWrappedParagraph(
-      context,
-      `від ${formatDate(input.protocol.date)} № ${input.protocol.number}`,
-      { gapAfter: 14 },
-    );
+        drawWrappedParagraph(context, 'ДОДАТОК', { fontSize: TITLE_SIZE, gapAfter: 4 });
+        drawWrappedParagraph(context, 'до протоколу загальних зборів співвласників', {
+          gapAfter: 2,
+        });
+        drawWrappedParagraph(context, `ОСББ "${input.osbb.name}"`, { gapAfter: 2 });
+        drawWrappedParagraph(
+          context,
+          `від ${formatDate(input.protocol.date)} № ${input.protocol.number}`,
+          { gapAfter: 14 },
+        );
 
-    drawWrappedParagraph(context, 'ЛИСТОК ПИСЬМОВОГО ОПИТУВАННЯ СПІВВЛАСНИКА', {
-      fontSize: TITLE_SIZE,
-      gapAfter: 14,
-    });
+        drawWrappedParagraph(context, 'ЛИСТОК ПИСЬМОВОГО ОПИТУВАННЯ СПІВВЛАСНИКА', {
+          fontSize: TITLE_SIZE,
+          gapAfter: 14,
+        });
 
-    drawWrappedParagraph(context, `1. Дата опитування: ${formatDate(input.surveyDate)}`, {
-      gapAfter: 4,
-    });
-    drawWrappedParagraph(context, `2. ПІБ співвласника: ${input.owner.fullName}`, {
-      gapAfter: 4,
-    });
-    drawWrappedParagraph(
-      context,
-      `3. Адреса та номер квартири: ${input.osbb.address}, кв. ${input.owner.apartmentNumber}`,
-      { gapAfter: 4 },
-    );
-    drawWrappedParagraph(context, `4. Загальна площа: ${input.owner.totalArea} м²`, {
-      gapAfter: 4,
-    });
-    drawWrappedParagraph(context, `5. Документ права власності: ${input.owner.ownershipDocument}`, {
-      gapAfter: 4,
-    });
-    drawWrappedParagraph(
-      context,
-      `6. Частка власності: ${input.owner.ownershipNumerator}/${input.owner.ownershipDenominator} (${input.owner.ownedArea} м²)`,
-      { gapAfter: 4 },
-    );
+        drawWrappedParagraph(context, `1. Дата опитування: ${formatDate(input.surveyDate)}`, {
+          gapAfter: 4,
+        });
+        drawWrappedParagraph(context, `2. ПІБ співвласника: ${input.owner.fullName}`, {
+          gapAfter: 4,
+        });
+        drawWrappedParagraph(
+          context,
+          `3. Адреса та номер квартири: ${input.osbb.address}, кв. ${input.owner.apartmentNumber}`,
+          { gapAfter: 4 },
+        );
+        drawWrappedParagraph(context, `4. Загальна площа: ${input.owner.totalArea} м²`, {
+          gapAfter: 4,
+        });
+        drawWrappedParagraph(
+          context,
+          `5. Документ права власності: ${input.owner.ownershipDocument}`,
+          {
+            gapAfter: 4,
+          },
+        );
+        drawWrappedParagraph(
+          context,
+          `6. Частка власності: ${input.owner.ownershipNumerator}/${input.owner.ownershipDenominator} (${input.owner.ownedArea} м²)`,
+          { gapAfter: 4 },
+        );
 
-    const representative = input.owner.representativeName
-      ? `${input.owner.representativeName}${input.owner.representativeDocument ? `, ${input.owner.representativeDocument}` : ''}`
-      : 'не вказано';
-    drawWrappedParagraph(context, `7. Представник (за наявності): ${representative}`, {
-      gapAfter: 12,
-    });
+        const representative = input.owner.representativeName
+          ? `${input.owner.representativeName}${input.owner.representativeDocument ? `, ${input.owner.representativeDocument}` : ''}`
+          : 'не вказано';
+        drawWrappedParagraph(context, `7. Представник (за наявності): ${representative}`, {
+          gapAfter: 12,
+        });
 
-    drawWrappedParagraph(context, 'Співвласник надає згоду на обробку персональних даних.', {
-      gapAfter: 12,
-    });
+        drawWrappedParagraph(context, 'Співвласник надає згоду на обробку персональних даних.', {
+          gapAfter: 12,
+        });
 
-    drawWrappedParagraph(context, 'Питання порядку денного:', { gapAfter: 6 });
-    for (const question of input.questions) {
-      const isFor = question.vote === 'FOR';
-      const isAgainst = question.vote === 'AGAINST';
+        drawWrappedParagraph(context, 'Питання порядку денного:', { gapAfter: 6 });
+        for (const question of input.questions) {
+          const isFor = question.vote === 'FOR';
+          const isAgainst = question.vote === 'AGAINST';
 
-      drawWrappedParagraph(context, `${question.orderNumber}. ${question.text}`, {
-        gapAfter: 3,
-      });
-      drawWrappedParagraph(context, `Пропозиція: ${question.proposal}`, {
-        indent: 12,
-        gapAfter: 3,
-      });
-      drawWrappedParagraph(
-        context,
-        `Позначка: [${isFor ? 'x' : ' '}] За   [${isAgainst ? 'x' : ' '}] Проти   Підпис: __________________`,
-        { indent: 12, gapAfter: 8 },
-      );
-    }
+          drawWrappedParagraph(context, `${question.orderNumber}. ${question.text}`, {
+            gapAfter: 3,
+          });
+          drawWrappedParagraph(context, `Пропозиція: ${question.proposal}`, {
+            indent: 12,
+            gapAfter: 3,
+          });
+          drawWrappedParagraph(
+            context,
+            `Позначка: [${isFor ? 'x' : ' '}] За   [${isAgainst ? 'x' : ' '}] Проти   Підпис: __________________`,
+            { indent: 12, gapAfter: 8 },
+          );
+        }
 
-    const organizerName = input.organizerName.trim() || '________________';
-    drawWrappedParagraph(
-      context,
-      `Підпис особи, що проводила опитування: _______ / ${organizerName} /`,
+        const organizerName = input.organizerName.trim() || '________________';
+        drawWrappedParagraph(
+          context,
+          `Підпис особи, що проводила опитування: _______ / ${organizerName} /`,
+          {
+            gapAfter: 0,
+          },
+        );
+
+        const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
+        const generationMs = Date.now() - startedAt;
+        return { pdfBytes, generationMs };
+      },
       {
-        gapAfter: 0,
+        ...retryPresets.pdf,
+        shouldRetry: (error) => classifyError(error) instanceof TemporaryError,
       },
     );
-
-    const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
-    const generationMs = Date.now() - startedAt;
-    return { pdfBytes, generationMs };
   } catch (error) {
     throw toPdfOperationError('generate', error);
   }
@@ -316,11 +331,19 @@ export async function writeVoteSheetPdfToTemp(input: {
   pdfBytes: Uint8Array;
 }): Promise<string> {
   try {
-    const directory = path.join(tmpdir(), 'zbory-pdfs');
-    await fs.mkdir(directory, { recursive: true });
-    const filePath = path.join(directory, `sheet-${input.sheetId}.pdf`);
-    await fs.writeFile(filePath, input.pdfBytes);
-    return filePath;
+    return await withRetry(
+      async () => {
+        const directory = path.join(tmpdir(), 'zbory-pdfs');
+        await fs.mkdir(directory, { recursive: true });
+        const filePath = path.join(directory, `sheet-${input.sheetId}.pdf`);
+        await fs.writeFile(filePath, input.pdfBytes);
+        return filePath;
+      },
+      {
+        ...retryPresets.pdf,
+        shouldRetry: (error) => classifyError(error) instanceof TemporaryError,
+      },
+    );
   } catch (error) {
     throw toPdfOperationError('write', error);
   }

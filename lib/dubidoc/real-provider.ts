@@ -7,11 +7,9 @@ import type {
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
 import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
+import { retryPresets, withRetry } from '@/lib/retry/withRetry';
 
 const DUBIDOC_BASE_URL = 'https://api.dubidoc.com.ua';
-const DUBIDOC_TIMEOUT_MS = 30_000;
-const DUBIDOC_MAX_RETRIES = 3;
-const DUBIDOC_RETRY_BACKOFF_MS = [1_000, 2_000, 4_000] as const;
 
 const dubidocErrorSchema = z
   .object({
@@ -74,12 +72,6 @@ type RequestOptions = {
   body?: unknown;
   expected: 'json' | 'bytes';
 };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
 
 function isRetryableStatus(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
@@ -212,69 +204,57 @@ export class DubidocApiSigningService implements DocumentSigningService {
   }
 
   private async request<T>(options: RequestOptions): Promise<T> {
-    const maxAttempts = DUBIDOC_MAX_RETRIES + 1;
+    return withRetry(
+      async ({ signal }) => {
+        try {
+          const response = await fetch(`${this.baseUrl}${options.path}`, {
+            method: options.method,
+            headers: this.headers,
+            body: options.body ? JSON.stringify(options.body) : undefined,
+            signal,
+          });
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), DUBIDOC_TIMEOUT_MS);
-
-      try {
-        const response = await fetch(`${this.baseUrl}${options.path}`, {
-          method: options.method,
-          headers: this.headers,
-          body: options.body ? JSON.stringify(options.body) : undefined,
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          let errorMessage = `[Dubidoc] ${options.method} ${options.path} failed with status ${response.status}.`;
-          try {
-            const parsedError = dubidocErrorSchema.safeParse(await response.json());
-            if (parsedError.success) {
-              const detail =
-                parsedError.data.detail ?? parsedError.data.message ?? parsedError.data.title;
-              if (detail) {
-                errorMessage = `${errorMessage} ${detail}`;
+          if (!response.ok) {
+            let errorMessage = `[Dubidoc] ${options.method} ${options.path} failed with status ${response.status}.`;
+            try {
+              const parsedError = dubidocErrorSchema.safeParse(await response.json());
+              if (parsedError.success) {
+                const detail =
+                  parsedError.data.detail ?? parsedError.data.message ?? parsedError.data.title;
+                if (detail) {
+                  errorMessage = `${errorMessage} ${detail}`;
+                }
               }
+            } catch {
+              // Ignore parse failures and use default error message.
             }
-          } catch {
-            // Ignore parse failures and use default error message.
+
+            throw classifyDubidocHttpStatus(response.status, errorMessage);
           }
 
-          throw classifyDubidocHttpStatus(response.status, errorMessage);
-        }
+          if (options.expected === 'bytes') {
+            const buffer = await response.arrayBuffer();
+            return new Uint8Array(buffer) as T;
+          }
 
-        if (options.expected === 'bytes') {
-          const buffer = await response.arrayBuffer();
-          return new Uint8Array(buffer) as T;
+          return (await response.json()) as T;
+        } catch (error) {
+          throw classifyDubidocRequestError(error);
         }
-
-        return (await response.json()) as T;
-      } catch (error) {
-        const classified = classifyDubidocRequestError(error);
-        const shouldRetry = attempt < maxAttempts && classified instanceof TemporaryError;
-        if (shouldRetry) {
-          const backoff =
-            DUBIDOC_RETRY_BACKOFF_MS[Math.min(attempt - 1, DUBIDOC_RETRY_BACKOFF_MS.length - 1)];
+      },
+      {
+        ...retryPresets.dubidoc,
+        shouldRetry: (error) => error instanceof TemporaryError,
+        onRetry: ({ attempt, nextDelayMs }) => {
           console.warn('[dubidoc:http] request retry scheduled', {
             method: options.method,
             path: options.path,
             attempt,
-            retryInMs: backoff,
+            retryInMs: nextDelayMs,
           });
-          await sleep(backoff);
-          continue;
-        }
-
-        throw classified;
-      } finally {
-        clearTimeout(timeout);
-      }
-    }
-
-    throw new TemporaryError('[Dubidoc] Retry attempts exhausted.', {
-      code: 'DUBIDOC_RETRY_EXHAUSTED',
-    });
+        },
+      },
+    );
   }
 
   async createDocument(fileBuffer: Uint8Array, title: string): Promise<DocumentCreateResult> {
