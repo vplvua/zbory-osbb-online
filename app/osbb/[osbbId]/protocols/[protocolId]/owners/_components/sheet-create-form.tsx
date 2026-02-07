@@ -38,7 +38,7 @@ export default function SheetCreateForm({
           Створити листок
         </Button>
       </div>
-      {state.error ? <p className="text-right text-xs text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="text-destructive text-right text-xs">{state.error}</p> : null}
     </form>
   );
 }

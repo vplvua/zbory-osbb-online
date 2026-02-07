@@ -60,7 +60,7 @@ export default function ProtocolForm({ action, defaultValues, submitLabel }: Pro
               id="type"
               name="type"
               defaultValue={defaultValues?.type ?? 'GENERAL'}
-              className="h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+              className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               required
             >
               <option value="GENERAL">Загальні</option>
@@ -68,7 +68,7 @@ export default function ProtocolForm({ action, defaultValues, submitLabel }: Pro
             </select>
           </div>
 
-          {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
           <Button type="submit">{submitLabel}</Button>
         </form>

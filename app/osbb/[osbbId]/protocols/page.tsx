@@ -36,19 +36,19 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
-        <p className="text-sm text-neutral-600">
-          <Link href="/osbb" className="text-blue-600 hover:underline">
+        <p className="text-muted-foreground text-sm">
+          <Link href="/osbb" className="text-brand underline-offset-4 hover:underline">
             ← Назад до ОСББ
           </Link>
         </p>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Протоколи</h1>
-            <p className="text-sm text-neutral-600">{osbb.name}</p>
+            <p className="text-muted-foreground text-sm">{osbb.name}</p>
           </div>
           <Link
             href={`/osbb/${osbb.id}/protocols/new`}
-            className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
           >
             Додати протокол
           </Link>
@@ -61,7 +61,7 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
         </CardHeader>
         <CardContent>
           {protocols.length === 0 ? (
-            <p className="text-sm text-neutral-600">Протоколи ще не створено.</p>
+            <p className="text-muted-foreground text-sm">Протоколи ще не створено.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -83,7 +83,7 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
                     <TableCell className="text-right">
                       <Link
                         href={`/osbb/${osbb.id}/protocols/${protocol.id}/edit`}
-                        className="text-sm text-blue-600 hover:underline"
+                        className="text-brand text-sm underline-offset-4 hover:underline"
                       >
                         Редагувати
                       </Link>

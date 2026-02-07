@@ -36,11 +36,11 @@ export default async function OsbbListPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">ОСББ</h1>
-          <p className="text-sm text-neutral-600">Список зареєстрованих ОСББ.</p>
+          <p className="text-muted-foreground text-sm">Список зареєстрованих ОСББ.</p>
         </div>
         <Link
           href="/osbb/new"
-          className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+          className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
         >
           Додати ОСББ
         </Link>
@@ -52,7 +52,7 @@ export default async function OsbbListPage() {
         </CardHeader>
         <CardContent>
           {osbbs.length === 0 ? (
-            <p className="text-sm text-neutral-600">Поки що немає ОСББ.</p>
+            <p className="text-muted-foreground text-sm">Поки що немає ОСББ.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -74,13 +74,13 @@ export default async function OsbbListPage() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-4">
                         <Link
-                          className="text-sm text-blue-600 hover:underline"
+                          className="text-brand text-sm underline-offset-4 hover:underline"
                           href={`/osbb/${osbb.id}/protocols`}
                         >
                           Протоколи
                         </Link>
                         <Link
-                          className="text-sm text-blue-600 hover:underline"
+                          className="text-brand text-sm underline-offset-4 hover:underline"
                           href={`/osbb/${osbb.id}/edit`}
                         >
                           Редагувати

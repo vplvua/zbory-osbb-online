@@ -32,8 +32,8 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
-        <p className="text-sm text-neutral-600">
-          <Link href="/osbb" className="text-blue-600 hover:underline">
+        <p className="text-muted-foreground text-sm">
+          <Link href="/osbb" className="text-brand underline-offset-4 hover:underline">
             ← Назад до списку
           </Link>
         </p>
@@ -51,24 +51,24 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
         }}
       />
 
-      <div className="rounded-lg border border-neutral-200 p-6">
+      <div className="border-border rounded-lg border p-6">
         <h2 className="text-lg font-semibold">Протоколи</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="text-muted-foreground mt-2 text-sm">
           Керуйте протоколами зборів та питаннями порядку денного.
         </p>
         <div className="mt-4">
           <Link
             href={`/osbb/${osbb.id}/protocols`}
-            className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
           >
             Перейти до протоколів
           </Link>
         </div>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 p-6">
+      <div className="border-border rounded-lg border p-6">
         <h2 className="text-lg font-semibold">Видалення</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="text-muted-foreground mt-2 text-sm">
           ОСББ буде позначене як видалене, але дані залишаться у системі.
         </p>
         <div className="mt-4">

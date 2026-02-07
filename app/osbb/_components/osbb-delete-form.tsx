@@ -17,7 +17,7 @@ export default function OsbbDeleteForm({ action, id }: OsbbDeleteFormProps) {
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="id" value={id} />
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
       <Button type="submit" variant="destructive">
         Видалити ОСББ
       </Button>

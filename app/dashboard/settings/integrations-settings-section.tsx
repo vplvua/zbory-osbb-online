@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export type IntegrationSettingsFormState = {
   dubidocApiKey: string;
@@ -24,53 +27,54 @@ export default function IntegrationSettingsSection({
     <section className="space-y-4">
       <h2 className="text-lg font-semibold">Інтеграції</h2>
 
-      <button
-        className="w-fit rounded border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-700"
+      <Button
+        className="h-8 w-fit px-3 text-xs"
+        variant="outline"
         type="button"
         onClick={() => setShowKeys((value) => !value)}
       >
         {showKeys ? 'Приховати ключі' : 'Показати ключі'}
-      </button>
+      </Button>
 
-      <label className="flex flex-col gap-2 text-sm">
-        Dubidoc API key
-        <input
-          className="rounded border border-neutral-300 px-3 py-2"
+      <div className="space-y-2">
+        <Label htmlFor="dubidocApiKey">Dubidoc API key</Label>
+        <Input
+          id="dubidocApiKey"
           type={showKeys ? 'text' : 'password'}
           value={form.dubidocApiKey}
           onChange={(event) => onFieldChange('dubidocApiKey', event.target.value)}
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-2 text-sm">
-        Dubidoc Org ID
-        <input
-          className="rounded border border-neutral-300 px-3 py-2"
+      <div className="space-y-2">
+        <Label htmlFor="dubidocOrgId">Dubidoc Org ID</Label>
+        <Input
+          id="dubidocOrgId"
           type={showKeys ? 'text' : 'password'}
           value={form.dubidocOrgId}
           onChange={(event) => onFieldChange('dubidocOrgId', event.target.value)}
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-2 text-sm">
-        TurboSMS API key
-        <input
-          className="rounded border border-neutral-300 px-3 py-2"
+      <div className="space-y-2">
+        <Label htmlFor="turboSmsApiKey">TurboSMS API key</Label>
+        <Input
+          id="turboSmsApiKey"
           type={showKeys ? 'text' : 'password'}
           value={form.turboSmsApiKey}
           onChange={(event) => onFieldChange('turboSmsApiKey', event.target.value)}
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-2 text-sm">
-        OpenAI API key
-        <input
-          className="rounded border border-neutral-300 px-3 py-2"
+      <div className="space-y-2">
+        <Label htmlFor="openAiApiKey">OpenAI API key</Label>
+        <Input
+          id="openAiApiKey"
           type={showKeys ? 'text' : 'password'}
           value={form.openAiApiKey}
           onChange={(event) => onFieldChange('openAiApiKey', event.target.value)}
         />
-      </label>
+      </div>
     </section>
   );
 }

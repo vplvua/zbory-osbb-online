@@ -2,6 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,14 +43,16 @@ export default function LoginPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-12">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Вхід</h1>
-        <p className="text-sm text-neutral-600">Введіть номер телефону у форматі +380XXXXXXXXX.</p>
+        <p className="text-muted-foreground text-sm">
+          Введіть номер телефону у форматі +380XXXXXXXXX.
+        </p>
       </header>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <label className="flex flex-col gap-2 text-sm">
-          Телефон
-          <input
-            className="rounded border border-neutral-300 px-3 py-2"
+        <div className="space-y-2">
+          <Label htmlFor="phone">Телефон</Label>
+          <Input
+            id="phone"
             type="tel"
             name="phone"
             placeholder="+380XXXXXXXXX"
@@ -55,17 +60,13 @@ export default function LoginPage() {
             onChange={(event) => setPhone(event.target.value)}
             required
           />
-        </label>
+        </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
-        <button
-          className="w-full rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          type="submit"
-          disabled={isLoading}
-        >
+        <Button className="w-full" type="submit" disabled={isLoading}>
           {isLoading ? 'Надсилання...' : 'Надіслати код'}
-        </button>
+        </Button>
       </form>
     </main>
   );

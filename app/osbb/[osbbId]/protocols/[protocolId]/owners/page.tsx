@@ -5,7 +5,9 @@ import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { createSheetAction } from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/actions';
 import SheetCreateForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_components/sheet-create-form';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -23,7 +25,7 @@ const SHEET_STATUS_LABELS: Record<SheetStatus, string> = {
 };
 
 const SHEET_STATUS_STYLES: Record<SheetStatus, string> = {
-  DRAFT: 'bg-neutral-100 text-neutral-700',
+  DRAFT: 'bg-surface-muted text-foreground/80',
   PENDING_ORGANIZER: 'bg-amber-100 text-amber-800',
   SIGNED: 'bg-emerald-100 text-emerald-700',
   EXPIRED: 'bg-red-100 text-red-700',
@@ -99,10 +101,10 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
-        <p className="text-sm text-neutral-600">
+        <p className="text-muted-foreground text-sm">
           <Link
             href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/edit`}
-            className="text-blue-600 hover:underline"
+            className="text-brand underline-offset-4 hover:underline"
           >
             ← Назад до протоколу
           </Link>
@@ -110,11 +112,11 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Співвласники</h1>
-            <p className="text-sm text-neutral-600">{protocol.osbb.name}</p>
+            <p className="text-muted-foreground text-sm">{protocol.osbb.name}</p>
           </div>
           <Link
             href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners/new`}
-            className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
           >
             Додати співвласника
           </Link>
@@ -127,22 +129,14 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
         </CardHeader>
         <CardContent className="space-y-4">
           <form className="flex flex-wrap items-center gap-3" method="get">
-            <input
-              name="q"
-              placeholder="Пошук за ПІБ"
-              defaultValue={query}
-              className="h-10 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm md:w-64"
-            />
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium"
-            >
+            <Input name="q" placeholder="Пошук за ПІБ" defaultValue={query} className="md:w-64" />
+            <Button type="submit" variant="outline">
               Шукати
-            </button>
+            </Button>
           </form>
 
           {owners.length === 0 ? (
-            <p className="text-sm text-neutral-600">Співвласників ще не додано.</p>
+            <p className="text-muted-foreground text-sm">Співвласників ще не додано.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -165,7 +159,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                     <TableCell className="text-right">
                       <Link
                         href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners/${owner.id}/edit`}
-                        className="text-sm text-blue-600 hover:underline"
+                        className="text-brand text-sm underline-offset-4 hover:underline"
                       >
                         Редагувати
                       </Link>
@@ -192,7 +186,9 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
         </CardHeader>
         <CardContent className="space-y-4">
           {sheets.length === 0 ? (
-            <p className="text-sm text-neutral-600">Листки для цього протоколу ще не створені.</p>
+            <p className="text-muted-foreground text-sm">
+              Листки для цього протоколу ще не створені.
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -214,7 +210,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                       <TableCell>
                         <div className="space-y-1">
                           <p className="font-medium">{sheet.owner.fullName}</p>
-                          <p className="text-xs text-neutral-600">
+                          <p className="text-muted-foreground text-xs">
                             кв. {sheet.owner.apartmentNumber}
                           </p>
                         </div>
@@ -231,7 +227,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                       <TableCell>
                         <Link
                           href={votePath}
-                          className="text-sm break-all text-blue-600 hover:underline"
+                          className="text-brand text-sm break-all underline-offset-4 hover:underline"
                         >
                           {votePath}
                         </Link>
@@ -243,7 +239,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
             </Table>
           )}
 
-          <p className="text-xs text-neutral-600">
+          <p className="text-muted-foreground text-xs">
             PDF для листків буде додано на наступному етапі інтеграції.
           </p>
         </CardContent>

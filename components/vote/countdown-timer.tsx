@@ -26,9 +26,9 @@ const TIMER_STYLES: Record<TimerLevel, { text: string; track: string; fill: stri
     fill: 'bg-red-500',
   },
   gray: {
-    text: 'text-neutral-700',
-    track: 'bg-neutral-200',
-    fill: 'bg-neutral-400',
+    text: 'text-foreground/80',
+    track: 'bg-surface-muted',
+    fill: 'bg-border',
   },
 };
 
@@ -71,7 +71,7 @@ export default function CountdownTimer({
   }, [isExpired, onExpiredChange]);
 
   return (
-    <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="border-border bg-surface space-y-3 rounded-lg border p-4">
       <p className={`text-sm font-medium ${styles.text}`}>
         До завершення голосування:{' '}
         <span>
@@ -82,16 +82,15 @@ export default function CountdownTimer({
 
       <div className="space-y-2">
         <div className={`h-2.5 w-full overflow-hidden rounded-full ${styles.track}`}>
-          <div
-            className={`h-full transition-[width] duration-700 ease-linear ${styles.fill}`}
-            style={{ width: `${progress}%` }}
-          />
+          <div className={`h-full ${styles.fill}`} style={{ width: `${progress}%` }} />
         </div>
         <p className={`text-xs ${styles.text}`}>Залишилось часу: {progress}%</p>
       </div>
 
       {isExpired ? (
-        <p className="text-sm text-neutral-700">Термін голосування завершено. Форма заблокована.</p>
+        <p className="text-foreground/80 text-sm">
+          Термін голосування завершено. Форма заблокована.
+        </p>
       ) : null}
     </div>
   );

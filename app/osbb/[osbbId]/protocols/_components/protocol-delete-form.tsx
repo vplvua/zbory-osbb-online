@@ -17,7 +17,7 @@ export default function DeleteProtocolForm({ protocolId, action }: ProtocolDelet
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="protocolId" value={protocolId} />
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
       <Button type="submit" variant="destructive">
         Видалити протокол
       </Button>

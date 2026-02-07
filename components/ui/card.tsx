@@ -11,7 +11,7 @@ type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement>;
 const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('rounded-xl border border-neutral-200 bg-white shadow-sm', className)}
+    className={cn('border-border bg-surface rounded-xl border shadow-sm', className)}
     {...props}
   />
 ));
@@ -19,7 +19,7 @@ Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, CardPartProps>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('border-b border-neutral-200 p-6', className)} {...props} />
+    <div ref={ref} className={cn('border-border border-b p-6', className)} {...props} />
   ),
 );
 CardHeader.displayName = 'CardHeader';

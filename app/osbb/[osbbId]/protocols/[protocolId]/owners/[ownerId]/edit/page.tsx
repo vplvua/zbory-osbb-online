@@ -40,10 +40,10 @@ export default async function OwnerEditPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
-        <p className="text-sm text-neutral-600">
+        <p className="text-muted-foreground text-sm">
           <Link
             href={`/osbb/${owner.protocol.osbbId}/protocols/${owner.protocolId}/owners`}
-            className="text-blue-600 hover:underline"
+            className="text-brand underline-offset-4 hover:underline"
           >
             ← Назад до співвласників
           </Link>
@@ -69,9 +69,9 @@ export default async function OwnerEditPage({
         }}
       />
 
-      <div className="rounded-lg border border-neutral-200 p-6">
+      <div className="border-border rounded-lg border p-6">
         <h2 className="text-lg font-semibold">Видалення</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="text-muted-foreground mt-2 text-sm">
           Співвласник буде видалений без можливості відновлення.
         </p>
         <div className="mt-4">

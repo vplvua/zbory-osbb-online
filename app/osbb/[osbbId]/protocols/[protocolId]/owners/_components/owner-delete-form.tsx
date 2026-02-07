@@ -17,7 +17,7 @@ export default function OwnerDeleteForm({ ownerId, action }: OwnerDeleteFormProp
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="ownerId" value={ownerId} />
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
       <Button type="submit" variant="destructive">
         Видалити співвласника
       </Button>

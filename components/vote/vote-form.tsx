@@ -28,16 +28,17 @@ export default function VoteForm({ questions, disabled }: VoteFormProps) {
     <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
       <fieldset className="space-y-6" disabled={disabled}>
         {questions.map((question, index) => (
-          <article key={question.id} className="rounded-lg border border-neutral-200 p-4">
-            <p className="text-sm text-neutral-600">
+          <article key={question.id} className="border-border rounded-lg border p-4">
+            <p className="text-muted-foreground text-sm">
               Питання {index + 1} з {questions.length}
             </p>
             <h3 className="mt-1 text-base font-medium">{question.text}</h3>
-            <p className="mt-2 text-sm text-neutral-700">Пропозиція: {question.proposal}</p>
+            <p className="text-foreground/80 mt-2 text-sm">Пропозиція: {question.proposal}</p>
 
             <div className="mt-4 flex flex-wrap gap-4">
-              <label className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm">
+              <label className="border-border inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
                 <input
+                  className="accent-brand"
                   type="radio"
                   name={`vote-${question.id}`}
                   value="FOR"
@@ -49,8 +50,9 @@ export default function VoteForm({ questions, disabled }: VoteFormProps) {
                 За
               </label>
 
-              <label className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm">
+              <label className="border-border inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
                 <input
+                  className="accent-brand"
                   type="radio"
                   name={`vote-${question.id}`}
                   value="AGAINST"
@@ -65,12 +67,12 @@ export default function VoteForm({ questions, disabled }: VoteFormProps) {
           </article>
         ))}
 
-        <label className="flex items-start gap-2 text-sm text-neutral-800">
+        <label className="text-foreground flex items-start gap-2 text-sm">
           <input
+            className="accent-brand mt-1"
             type="checkbox"
             checked={isConsentChecked}
             onChange={(event) => setIsConsentChecked(event.target.checked)}
-            className="mt-1"
           />
           Надаю згоду на обробку персональних даних
         </label>
@@ -83,7 +85,7 @@ export default function VoteForm({ questions, disabled }: VoteFormProps) {
           <Button type="submit" disabled={!isComplete || disabled}>
             Підписати електронним підписом
           </Button>
-          <p className="text-xs text-neutral-600">
+          <p className="text-muted-foreground text-xs">
             Підписання через Dubidoc буде додано на наступному етапі.
           </p>
         </div>

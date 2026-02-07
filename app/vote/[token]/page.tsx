@@ -20,9 +20,9 @@ function renderStatusBlock(status: SheetStatus) {
 
   if (status === SheetStatus.SIGNED) {
     return (
-      <section className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4">
+      <section className="border-border bg-surface space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Документ підписано</h2>
-        <p className="text-sm text-neutral-700">
+        <p className="text-foreground/80 text-sm">
           Документ підписано обома сторонами. Завантаження файлів буде активовано на наступному
           етапі.
         </p>
@@ -43,9 +43,9 @@ function renderStatusBlock(status: SheetStatus) {
 
   if (status === SheetStatus.EXPIRED) {
     return (
-      <section className="rounded-lg border border-neutral-300 bg-neutral-100 p-4">
-        <h2 className="text-lg font-semibold text-neutral-800">Термін голосування завершено</h2>
-        <p className="mt-2 text-sm text-neutral-700">
+      <section className="border-border bg-surface-muted rounded-lg border p-4">
+        <h2 className="text-foreground text-lg font-semibold">Термін голосування завершено</h2>
+        <p className="text-foreground/80 mt-2 text-sm">
           Строк для підписання листка минув. Якщо потрібно, зверніться до уповноваженої особи ОСББ.
         </p>
       </section>
@@ -71,14 +71,14 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">{sheet.osbbName}</h1>
-        <p className="text-sm text-neutral-700">
+        <p className="text-foreground/80 text-sm">
           Протокол №{sheet.protocolNumber} від {protocolDate}
         </p>
       </header>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-4">
+      <section className="border-border bg-surface rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Ваші дані</h2>
-        <div className="mt-3 space-y-1 text-sm text-neutral-800">
+        <div className="text-foreground mt-3 space-y-1 text-sm">
           <p>ПІБ: {sheet.owner.fullName}</p>
           <p>Квартира: {sheet.owner.apartmentNumber}</p>
           <p>
@@ -102,13 +102,13 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
       )}
 
       {sheet.effectiveStatus !== SheetStatus.DRAFT ? (
-        <section className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4">
+        <section className="border-border bg-surface space-y-3 rounded-lg border p-4">
           <h2 className="text-lg font-semibold">Питання голосування</h2>
           {sheet.questions.map((question) => (
-            <article key={question.id} className="rounded-md border border-neutral-200 p-3">
-              <p className="text-sm text-neutral-600">Питання №{question.orderNumber}</p>
+            <article key={question.id} className="border-border rounded-md border p-3">
+              <p className="text-muted-foreground text-sm">Питання №{question.orderNumber}</p>
               <h3 className="mt-1 text-base font-medium">{question.text}</h3>
-              <p className="mt-2 text-sm text-neutral-700">Пропозиція: {question.proposal}</p>
+              <p className="text-foreground/80 mt-2 text-sm">Пропозиція: {question.proposal}</p>
             </article>
           ))}
         </section>

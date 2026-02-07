@@ -2,6 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type VerifyFormProps = {
   initialPhone: string;
@@ -43,10 +46,10 @@ export default function VerifyForm({ initialPhone }: VerifyFormProps) {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      <label className="flex flex-col gap-2 text-sm">
-        Телефон
-        <input
-          className="rounded border border-neutral-300 px-3 py-2"
+      <div className="space-y-2">
+        <Label htmlFor="phone">Телефон</Label>
+        <Input
+          id="phone"
           type="tel"
           name="phone"
           placeholder="+380XXXXXXXXX"
@@ -54,12 +57,13 @@ export default function VerifyForm({ initialPhone }: VerifyFormProps) {
           onChange={(event) => setPhone(event.target.value)}
           required
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-2 text-sm">
-        Код
-        <input
-          className="rounded border border-neutral-300 px-3 py-2 tracking-[0.2em]"
+      <div className="space-y-2">
+        <Label htmlFor="code">Код</Label>
+        <Input
+          id="code"
+          className="tracking-[0.2em]"
           type="text"
           name="code"
           inputMode="numeric"
@@ -68,17 +72,13 @@ export default function VerifyForm({ initialPhone }: VerifyFormProps) {
           onChange={(event) => setCode(event.target.value)}
           required
         />
-      </label>
+      </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
-      <button
-        className="w-full rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-        type="submit"
-        disabled={isLoading}
-      >
+      <Button className="w-full" type="submit" disabled={isLoading}>
         {isLoading ? 'Перевірка...' : 'Підтвердити'}
-      </button>
+      </Button>
     </form>
   );
 }

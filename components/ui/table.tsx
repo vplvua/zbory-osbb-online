@@ -13,15 +13,19 @@ type TableCellProps = React.TdHTMLAttributes<HTMLTableCellElement>;
 type TableHeadProps = React.ThHTMLAttributes<HTMLTableCellElement>;
 
 const Table = React.forwardRef<HTMLTableElement, TableProps>(({ className, ...props }, ref) => (
-  <div className="w-full overflow-auto">
-    <table ref={ref} className={cn('w-full border-collapse text-sm', className)} {...props} />
+  <div className="w-full overflow-x-auto overflow-y-hidden">
+    <table
+      ref={ref}
+      className={cn('w-full min-w-[640px] border-collapse text-sm', className)}
+      {...props}
+    />
   </div>
 ));
 Table.displayName = 'Table';
 
 const TableHeader = React.forwardRef<HTMLTableSectionElement, TableSectionProps>(
   ({ className, ...props }, ref) => (
-    <thead ref={ref} className={cn('border-b border-neutral-200', className)} {...props} />
+    <thead ref={ref} className={cn('border-border border-b', className)} {...props} />
   ),
 );
 TableHeader.displayName = 'TableHeader';
@@ -37,7 +41,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
   ({ className, ...props }, ref) => (
     <tr
       ref={ref}
-      className={cn('border-b border-neutral-100 transition hover:bg-neutral-50', className)}
+      className={cn('border-border/60 hover:bg-surface-muted border-b', className)}
       {...props}
     />
   ),
@@ -48,7 +52,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
   ({ className, ...props }, ref) => (
     <th
       ref={ref}
-      className={cn('px-4 py-3 text-left font-medium text-neutral-500', className)}
+      className={cn('text-muted-foreground px-4 py-3 text-left font-medium', className)}
       {...props}
     />
   ),

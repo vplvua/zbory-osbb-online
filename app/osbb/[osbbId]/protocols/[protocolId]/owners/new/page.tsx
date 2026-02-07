@@ -30,10 +30,10 @@ export default async function OwnerNewPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
-        <p className="text-sm text-neutral-600">
+        <p className="text-muted-foreground text-sm">
           <Link
             href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners`}
-            className="text-blue-600 hover:underline"
+            className="text-brand underline-offset-4 hover:underline"
           >
             ← Назад до співвласників
           </Link>

@@ -45,16 +45,16 @@ export default async function ProtocolEditPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
-        <p className="text-sm text-neutral-600">
+        <p className="text-muted-foreground text-sm">
           <Link
             href={`/osbb/${protocol.osbbId}/protocols`}
-            className="text-blue-600 hover:underline"
+            className="text-brand underline-offset-4 hover:underline"
           >
             ← Назад до протоколів
           </Link>
         </p>
         <h1 className="text-2xl font-semibold">Редагувати протокол</h1>
-        <p className="text-sm text-neutral-600">{protocol.osbb.name}</p>
+        <p className="text-muted-foreground text-sm">{protocol.osbb.name}</p>
       </div>
 
       <ProtocolForm
@@ -71,7 +71,7 @@ export default async function ProtocolEditPage({
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Питання порядку денного</h2>
         {protocol.questions.length === 0 ? (
-          <p className="text-sm text-neutral-600">Питання ще не додані.</p>
+          <p className="text-muted-foreground text-sm">Питання ще не додані.</p>
         ) : (
           <div className="space-y-4">
             {protocol.questions.map((question) => (
@@ -88,24 +88,24 @@ export default async function ProtocolEditPage({
 
       <QuestionCreateForm action={addQuestionAction} protocolId={protocol.id} />
 
-      <section className="rounded-lg border border-neutral-200 p-6">
+      <section className="border-border rounded-lg border p-6">
         <h2 className="text-lg font-semibold">Співвласники</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="text-muted-foreground mt-2 text-sm">
           Додайте співвласників для цього протоколу перед створенням листків.
         </p>
         <div className="mt-4">
           <Link
             href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners`}
-            className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
           >
             Перейти до співвласників
           </Link>
         </div>
       </section>
 
-      <section className="rounded-lg border border-neutral-200 p-6">
+      <section className="border-border rounded-lg border p-6">
         <h2 className="text-lg font-semibold">Видалення протоколу</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="text-muted-foreground mt-2 text-sm">
           Протокол буде видалено без можливості відновлення.
         </p>
         <div className="mt-4">

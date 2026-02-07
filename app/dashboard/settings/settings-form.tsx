@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type SettingsFormState = {
   organizerName: string;
@@ -100,61 +103,57 @@ export default function SettingsForm() {
   };
 
   return isLoading ? (
-    <p className="text-sm text-neutral-600">Завантаження...</p>
+    <p className="text-muted-foreground text-sm">Завантаження...</p>
   ) : (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Уповноважена особа</h2>
 
-        <label className="flex flex-col gap-2 text-sm">
-          ПІБ
-          <input
-            className="rounded border border-neutral-300 px-3 py-2"
+        <div className="space-y-2">
+          <Label htmlFor="organizerName">ПІБ</Label>
+          <Input
+            id="organizerName"
             value={form.organizerName}
             onChange={updateField('organizerName')}
             required
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-2 text-sm">
-          Посада
-          <input
-            className="rounded border border-neutral-300 px-3 py-2"
+        <div className="space-y-2">
+          <Label htmlFor="organizerPosition">Посада</Label>
+          <Input
+            id="organizerPosition"
             value={form.organizerPosition}
             onChange={updateField('organizerPosition')}
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-2 text-sm">
-          Email
-          <input
-            className="rounded border border-neutral-300 px-3 py-2"
+        <div className="space-y-2">
+          <Label htmlFor="organizerEmail">Email</Label>
+          <Input
+            id="organizerEmail"
             type="email"
             value={form.organizerEmail}
             onChange={updateField('organizerEmail')}
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-2 text-sm">
-          Телефон
-          <input
-            className="rounded border border-neutral-300 px-3 py-2"
+        <div className="space-y-2">
+          <Label htmlFor="organizerPhone">Телефон</Label>
+          <Input
+            id="organizerPhone"
             placeholder="+380XXXXXXXXX"
             value={form.organizerPhone}
             onChange={updateField('organizerPhone')}
           />
-        </label>
+        </div>
       </section>
 
-      {status ? <p className="text-sm text-neutral-600">{status}</p> : null}
+      {status ? <p className="text-muted-foreground text-sm">{status}</p> : null}
 
-      <button
-        className="w-full rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-        type="submit"
-        disabled={isSaving}
-      >
+      <Button className="w-full" type="submit" disabled={isSaving}>
         {isSaving ? 'Збереження...' : 'Зберегти'}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -58,7 +58,7 @@ export default function OsbbForm({ action, defaultValues, submitLabel }: OsbbFor
             />
           </div>
 
-          {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
           <Button type="submit">{submitLabel}</Button>
         </form>

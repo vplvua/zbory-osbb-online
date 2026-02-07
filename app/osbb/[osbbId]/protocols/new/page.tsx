@@ -23,8 +23,11 @@ export default async function ProtocolNewPage({ params }: { params: Promise<{ os
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
-        <p className="text-sm text-neutral-600">
-          <Link href={`/osbb/${osbb.id}/protocols`} className="text-blue-600 hover:underline">
+        <p className="text-muted-foreground text-sm">
+          <Link
+            href={`/osbb/${osbb.id}/protocols`}
+            className="text-brand underline-offset-4 hover:underline"
+          >
             ← Назад до протоколів
           </Link>
         </p>

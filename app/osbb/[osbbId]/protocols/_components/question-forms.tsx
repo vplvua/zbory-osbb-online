@@ -55,11 +55,11 @@ export function QuestionCreateForm({ action, protocolId }: QuestionFormProps) {
           </div>
 
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="requiresTwoThirds" />
+            <input className="accent-brand" type="checkbox" name="requiresTwoThirds" />
             Потребує 2/3 голосів
           </label>
 
-          {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
           <Button type="submit">Додати питання</Button>
         </form>
@@ -115,6 +115,7 @@ export function QuestionItemForm({ action, deleteAction, question }: QuestionIte
 
           <label className="flex items-center gap-2 text-sm">
             <input
+              className="accent-brand"
               type="checkbox"
               name="requiresTwoThirds"
               defaultChecked={question.requiresTwoThirds}
@@ -122,19 +123,23 @@ export function QuestionItemForm({ action, deleteAction, question }: QuestionIte
             Потребує 2/3 голосів
           </label>
 
-          {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
           <div className="flex flex-wrap gap-3">
             <Button type="submit">Зберегти питання</Button>
-            <form action={deleteFormAction}>
-              <input type="hidden" name="questionId" value={question.id} />
-              <Button type="submit" variant="destructive">
-                Видалити
-              </Button>
-            </form>
+            <Button
+              type="submit"
+              variant="destructive"
+              formAction={deleteFormAction}
+              formNoValidate
+            >
+              Видалити
+            </Button>
           </div>
 
-          {deleteState.error ? <p className="text-sm text-red-600">{deleteState.error}</p> : null}
+          {deleteState.error ? (
+            <p className="text-destructive text-sm">{deleteState.error}</p>
+          ) : null}
         </form>
       </CardContent>
     </Card>

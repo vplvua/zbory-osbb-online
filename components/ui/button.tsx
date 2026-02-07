@@ -3,23 +3,25 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'default' | 'secondary' | 'ghost' | 'destructive';
+  variant?: 'primary' | 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive';
 };
 
 const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
-  default: 'bg-black text-white hover:bg-neutral-800',
-  secondary: 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200',
-  ghost: 'bg-transparent text-neutral-900 hover:bg-neutral-100',
-  destructive: 'bg-red-600 text-white hover:bg-red-700',
+  primary: 'bg-brand text-brand-foreground hover:bg-brand-hover',
+  default: 'bg-brand text-brand-foreground hover:bg-brand-hover',
+  secondary: 'border border-border bg-surface text-foreground hover:bg-surface-muted',
+  outline: 'border border-border bg-background text-foreground hover:bg-surface-muted',
+  ghost: 'bg-transparent text-foreground hover:bg-surface-muted',
+  destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
 };
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', type = 'button', ...props }, ref) => (
+  ({ className, variant = 'primary', type = 'button', ...props }, ref) => (
     <button
       ref={ref}
       type={type}
       className={cn(
-        'inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition disabled:pointer-events-none disabled:opacity-50',
+        'focus-visible:ring-ring focus-visible:ring-offset-background inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
         variantStyles[variant],
         className,
       )}
