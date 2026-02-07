@@ -11,6 +11,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck",
+    "worker:deferred-queue": "node --experimental-transform-types scripts/queue/deferred-worker.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"

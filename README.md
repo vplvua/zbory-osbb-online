@@ -153,6 +153,61 @@ import { prisma, withTransaction } from '@/lib/db/prisma';
 
 The singleton prevents excessive connections during Next.js dev hot reloads.
 
+## Deferred queue (MVP minimal)
+
+`DeferredQueue` is used for lightweight deferred/retry jobs without extra infrastructure.
+
+Enqueue helper:
+
+```ts
+import { enqueueDeferredJob } from '@/lib/queue/deferred-queue';
+
+await enqueueDeferredJob({
+  type: 'NOOP',
+  payload: { source: 'manual-test' },
+  runAt: new Date(),
+});
+```
+
+Run worker locally (process due jobs once):
+
+```bash
+pnpm worker:deferred-queue
+```
+
+Optional limit:
+
+```bash
+pnpm worker:deferred-queue -- --limit 50
+```
+
+The worker updates:
+
+- `attempts` on every processing try
+- `lastError` on failures
+- `status` to `PENDING` (retry), `DONE`, or `FAILED`
+
+## Vercel cron approach (minimal)
+
+Use API endpoint as cron trigger:
+
+- `GET /api/cron/deferred-queue`
+- optional auth via `CRON_SECRET` (`Authorization: Bearer <secret>` or `x-cron-secret`)
+- optional query param `limit` (1..200)
+
+Example `vercel.json` snippet:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/deferred-queue?limit=50",
+      "schedule": "*/1 * * * *"
+    }
+  ]
+}
+```
+
 ## SMS adapter (dev)
 
 If `TURBOSMS_API_KEY` is not set, the SMS adapter uses a dev mock that logs codes to the console and returns success. Use:
