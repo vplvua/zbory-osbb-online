@@ -161,6 +161,32 @@ If `TURBOSMS_API_KEY` is not set, the SMS adapter uses a dev mock that logs code
 import { getSmsAdapter } from '@/lib/sms/adapter';
 ```
 
+## Dubidoc adapter (mock-first)
+
+Use the signing adapter via:
+
+```ts
+import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
+```
+
+Provider selection:
+
+- Mock provider is used by default (no real HTTP calls).
+- Stub real provider is used only when both `DUBIDOC_API_KEY` and `DUBIDOC_ORG_ID` are set to non-empty, non-placeholder values.
+
+To run in mock mode, keep these values empty in `.env.local` (or remove them):
+
+```env
+DUBIDOC_API_KEY=
+DUBIDOC_ORG_ID=
+```
+
+Mock signing simulation:
+
+- `getDocumentStatus()` call 1: `CREATED`
+- call 2: `OWNER_SIGNED`
+- call 3+: `ORGANIZER_SIGNED`
+
 ## SMS login (MVP)
 
 Minimal OTP flow is available at:
