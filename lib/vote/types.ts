@@ -34,3 +34,9 @@ export type VoteSheetDto = {
 export type VoteSheetResponseDto = {
   sheet: VoteSheetDto;
 };
+
+export type VoteSubmitResponseDto = {
+  ok: true;
+  message: string;
+  sheet: VoteSheetDto;
+};
