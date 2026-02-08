@@ -1,10 +1,17 @@
+import { redirect } from 'next/navigation';
 import VerifyForm from '@/app/verify/verify-form';
+import { getSessionPayload } from '@/lib/auth/session-token';
 
 type VerifyPageProps = {
   searchParams?: Promise<{ phone?: string }>;
 };
 
 export default async function VerifyPage({ searchParams }: VerifyPageProps) {
+  const session = await getSessionPayload();
+  if (session) {
+    redirect('/dashboard');
+  }
+
   const resolvedParams = await searchParams;
   const initialPhone = resolvedParams?.phone ?? '';
 
