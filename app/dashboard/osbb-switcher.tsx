@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { selectOsbbAction } from '@/app/dashboard/actions';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import type { OsbbSummary } from '@/lib/osbb/selected-osbb';
 
@@ -104,7 +105,10 @@ export default function OsbbSwitcher({
 
                 <div className="mt-5 flex justify-end">
                   <Link href="/osbb/new">
-                    <Button type="button">Додати ОСББ</Button>
+                    <Button type="button">
+                      <AddIcon className="h-4 w-4" />
+                      Додати ОСББ
+                    </Button>
                   </Link>
                 </div>
               </div>

@@ -118,6 +118,11 @@ model OSBB {
   email     String?
   phone     String?
 
+  // Особа, яка проводить опитування
+  organizerName  String?
+  organizerEmail String?
+  organizerPhone String?
+
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

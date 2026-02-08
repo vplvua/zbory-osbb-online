@@ -16,6 +16,9 @@ function getFormData(formData: FormData) {
     shortName: String(formData.get('shortName') ?? ''),
     address: String(formData.get('address') ?? ''),
     edrpou: String(formData.get('edrpou') ?? ''),
+    organizerName: String(formData.get('organizerName') ?? ''),
+    organizerEmail: String(formData.get('organizerEmail') ?? ''),
+    organizerPhone: String(formData.get('organizerPhone') ?? ''),
   };
 }
 
@@ -27,7 +30,10 @@ export async function createOsbbAction(_: OsbbFormState, formData: FormData) {
 
   const parsed = osbbSchema.safeParse(getFormData(formData));
   if (!parsed.success) {
-    return { error: 'Перевірте поля: повна назва, коротка назва, адреса, ЄДРПОУ (8 цифр).' };
+    return {
+      error:
+        'Перевірте поля ОСББ та уповноваженої особи: назва, адреса, ЄДРПОУ (8 цифр), ПІБ, email і телефон (+380XXXXXXXXX).',
+    };
   }
 
   const osbb = await prisma.oSBB.create({
@@ -37,6 +43,9 @@ export async function createOsbbAction(_: OsbbFormState, formData: FormData) {
       shortName: parsed.data.shortName,
       address: parsed.data.address,
       edrpou: parsed.data.edrpou,
+      organizerName: parsed.data.organizerName,
+      organizerEmail: parsed.data.organizerEmail,
+      organizerPhone: parsed.data.organizerPhone,
     },
   });
 
@@ -60,7 +69,10 @@ export async function updateOsbbAction(
 
   const parsed = osbbSchema.safeParse(getFormData(formData));
   if (!parsed.success) {
-    return { error: 'Перевірте поля: повна назва, коротка назва, адреса, ЄДРПОУ (8 цифр).' };
+    return {
+      error:
+        'Перевірте поля ОСББ та уповноваженої особи: назва, адреса, ЄДРПОУ (8 цифр), ПІБ, email і телефон (+380XXXXXXXXX).',
+    };
   }
 
   const osbb = await prisma.oSBB.findFirst({
@@ -82,6 +94,9 @@ export async function updateOsbbAction(
       shortName: parsed.data.shortName,
       address: parsed.data.address,
       edrpou: parsed.data.edrpou,
+      organizerName: parsed.data.organizerName,
+      organizerEmail: parsed.data.organizerEmail,
+      organizerPhone: parsed.data.organizerPhone,
     },
   });
 

@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -62,7 +63,10 @@ export function QuestionCreateForm({ action, protocolId }: QuestionFormProps) {
 
           {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
-          <Button type="submit">Додати питання</Button>
+          <Button type="submit">
+            <AddIcon className="h-4 w-4" />
+            Додати питання
+          </Button>
         </form>
       </CardContent>
     </Card>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import AppHeader from '@/components/app-header';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import OsbbForm from '@/app/osbb/_components/osbb-form';
@@ -30,52 +31,56 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          <Link href="/dashboard" className="text-brand underline-offset-4 hover:underline">
-            ← Назад до дашборду
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold">Редагувати ОСББ</h1>
-      </div>
-
-      <OsbbForm
-        action={updateOsbbAction}
-        submitLabel="Зберегти"
-        defaultValues={{
-          id: osbb.id,
-          name: osbb.name,
-          shortName: osbb.shortName,
-          address: osbb.address,
-          edrpou: osbb.edrpou,
-        }}
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title={osbb.shortName}
+        containerClassName="max-w-3xl"
+        backLink={{ href: '/dashboard', label: '← Назад на головну' }}
       />
 
-      <div className="border-border rounded-lg border p-6">
-        <h2 className="text-lg font-semibold">Протоколи</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Керуйте протоколами зборів та питаннями порядку денного.
-        </p>
-        <div className="mt-4">
-          <Link
-            href={`/osbb/${osbb.id}/protocols`}
-            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
-          >
-            Перейти до протоколів
-          </Link>
-        </div>
-      </div>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+          <OsbbForm
+            action={updateOsbbAction}
+            submitLabel="Зберегти"
+            defaultValues={{
+              id: osbb.id,
+              name: osbb.name,
+              shortName: osbb.shortName,
+              address: osbb.address,
+              edrpou: osbb.edrpou,
+              organizerName: osbb.organizerName ?? '',
+              organizerEmail: osbb.organizerEmail ?? '',
+              organizerPhone: osbb.organizerPhone ?? '',
+            }}
+          />
 
-      <div className="border-border rounded-lg border p-6">
-        <h2 className="text-lg font-semibold">Видалення</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          ОСББ буде позначене як видалене, але дані залишаться у системі.
-        </p>
-        <div className="mt-4">
-          <OsbbDeleteForm action={deleteOsbbAction} id={osbb.id} />
+          <div className="border-border rounded-lg border p-6">
+            <h2 className="text-lg font-semibold">Протоколи</h2>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Керуйте протоколами зборів та питаннями порядку денного.
+            </p>
+            <div className="mt-4">
+              <Link
+                href={`/osbb/${osbb.id}/protocols`}
+                className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
+              >
+                Перейти до протоколів
+              </Link>
+            </div>
+          </div>
+
+          <div className="border-border rounded-lg border p-6">
+            <h2 className="text-lg font-semibold">Видалення</h2>
+            <p className="text-muted-foreground mt-2 text-sm">
+              ОСББ буде позначене як видалене, але дані залишаться у системі.
+            </p>
+            <div className="mt-4">
+              <OsbbDeleteForm action={deleteOsbbAction} id={osbb.id} />
+            </div>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

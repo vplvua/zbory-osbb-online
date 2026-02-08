@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import OsbbSwitcher from '@/app/dashboard/osbb-switcher';
 import AppHeader from '@/components/app-header';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getSessionPayload } from '@/lib/auth/session-token';
@@ -72,11 +73,13 @@ function CardActions({
       {links.map((link) =>
         link.disabled ? (
           <Button key={link.label} type="button" variant="outline" disabled>
+            {link.label.startsWith('Додати') ? <AddIcon className="h-4 w-4" /> : null}
             {link.label}
           </Button>
         ) : (
           <Link key={link.label} href={link.href}>
             <Button type="button" variant="outline">
+              {link.label.startsWith('Додати') ? <AddIcon className="h-4 w-4" /> : null}
               {link.label}
             </Button>
           </Link>

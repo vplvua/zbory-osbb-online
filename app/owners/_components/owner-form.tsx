@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -143,7 +144,10 @@ export default function OwnerForm({ action, defaultValues, submitLabel }: OwnerF
 
           {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
-          <Button type="submit">{submitLabel}</Button>
+          <Button type="submit">
+            {submitLabel.startsWith('Додати') ? <AddIcon className="h-4 w-4" /> : null}
+            {submitLabel}
+          </Button>
         </form>
       </CardContent>
     </Card>

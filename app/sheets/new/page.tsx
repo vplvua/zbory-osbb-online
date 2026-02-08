@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import SheetCreateForm from '@/app/sheets/_components/sheet-create-form';
 import { createSheetAction } from '@/app/sheets/actions';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSessionPayload } from '@/lib/auth/session-token';
@@ -70,12 +71,16 @@ export default async function SheetNewPage() {
             <div className="flex flex-wrap gap-2">
               {protocols.length === 0 ? (
                 <Link href="/protocols/new">
-                  <Button type="button">Додати протокол</Button>
+                  <Button type="button">
+                    <AddIcon className="h-4 w-4" />
+                    Додати протокол
+                  </Button>
                 </Link>
               ) : null}
               {owners.length === 0 ? (
                 <Link href="/owners/new">
                   <Button type="button" variant="outline">
+                    <AddIcon className="h-4 w-4" />
                     Додати співвласника
                   </Button>
                 </Link>

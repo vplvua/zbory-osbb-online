@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import type { ProtocolOwnerFormState } from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/actions';
@@ -45,6 +46,7 @@ export default function OwnerAttachForm({ protocolId, owners, action }: OwnerAtt
 
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" variant="secondary">
+          <AddIcon className="h-4 w-4" />
           Додати до протоколу
         </Button>
       </div>

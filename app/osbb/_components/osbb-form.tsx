@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 import type { OsbbFormState } from '@/app/osbb/actions';
 
 const initialState: OsbbFormState = {};
@@ -17,6 +18,9 @@ type OsbbFormProps = {
     shortName?: string;
     address?: string;
     edrpou?: string;
+    organizerName?: string;
+    organizerEmail?: string;
+    organizerPhone?: string;
   };
   submitLabel: string;
 };
@@ -67,6 +71,41 @@ export default function OsbbForm({ action, defaultValues, submitLabel }: OsbbFor
               required
               inputMode="numeric"
             />
+          </div>
+
+          <div className="space-y-4 pt-2">
+            <h3 className="text-base font-semibold">Особа, яка проводить опитування</h3>
+
+            <div className="space-y-2">
+              <Label htmlFor="organizerName">ПІБ</Label>
+              <Input
+                id="organizerName"
+                name="organizerName"
+                defaultValue={defaultValues?.organizerName ?? ''}
+                required
+              />
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="organizerEmail">Електронна адреса</Label>
+              <Input
+                id="organizerEmail"
+                name="organizerEmail"
+                type="email"
+                defaultValue={defaultValues?.organizerEmail ?? ''}
+                required
+              />
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="organizerPhone">Номер телефону</Label>
+              <PhoneInput
+                id="organizerPhone"
+                name="organizerPhone"
+                defaultValue={defaultValues?.organizerPhone ?? ''}
+                required
+              />
+            </div>
           </div>
 
           {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}

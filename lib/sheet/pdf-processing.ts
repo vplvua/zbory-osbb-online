@@ -58,15 +58,7 @@ async function loadSheetPdfContext(sheetId: string) {
             select: {
               name: true,
               address: true,
-              user: {
-                select: {
-                  settings: {
-                    select: {
-                      organizerName: true,
-                    },
-                  },
-                },
-              },
+              organizerName: true,
             },
           },
           questions: {
@@ -132,7 +124,7 @@ export async function generateAndStoreSheetPdf(sheetId: string): Promise<Generat
         representativeName: sheet.owner.representativeName,
         representativeDocument: sheet.owner.representativeDocument,
       },
-      organizerName: sheet.protocol.osbb.user.settings?.organizerName ?? '',
+      organizerName: sheet.protocol.osbb.organizerName ?? '',
       questions: sheet.protocol.questions.map((question) => ({
         orderNumber: question.orderNumber,
         text: question.text,

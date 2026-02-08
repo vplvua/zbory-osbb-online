@@ -4,6 +4,7 @@ import { SheetStatus } from '@prisma/client';
 import SheetDeleteForm from '@/app/sheets/_components/sheet-delete-form';
 import SheetRetryForm from '@/app/sheets/_components/sheet-retry-form';
 import { deleteSheetAction, retrySheetPdfAction } from '@/app/sheets/actions';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getSessionPayload } from '@/lib/auth/session-token';
@@ -110,7 +111,10 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
             <p className="text-muted-foreground text-sm">{selectedOsbb.name}</p>
           </div>
           <Link href="/sheets/new">
-            <Button type="button">Додати листок опитування</Button>
+            <Button type="button">
+              <AddIcon className="h-4 w-4" />
+              Додати листок опитування
+            </Button>
           </Link>
         </div>
       </div>

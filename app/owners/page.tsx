@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
+import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,10 @@ export default async function OwnersPage({ searchParams }: OwnersPageProps) {
             <p className="text-muted-foreground text-sm">{selectedOsbb.name}</p>
           </div>
           <Link href="/owners/new">
-            <Button type="button">Додати співвласника</Button>
+            <Button type="button">
+              <AddIcon className="h-4 w-4" />
+              Додати співвласника
+            </Button>
           </Link>
         </div>
       </div>

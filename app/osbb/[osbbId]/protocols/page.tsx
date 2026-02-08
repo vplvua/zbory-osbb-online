@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
+import AddIcon from '@/components/icons/add-icon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -48,8 +49,9 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
           </div>
           <Link
             href={`/osbb/${osbb.id}/protocols/new`}
-            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
+            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
           >
+            <AddIcon className="h-4 w-4" />
             Додати протокол
           </Link>
         </div>

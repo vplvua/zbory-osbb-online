@@ -8,6 +8,12 @@ export const osbbSchema = z.object({
     .string()
     .trim()
     .regex(/^\d{8}$/),
+  organizerName: z.string().trim().min(2).max(200),
+  organizerEmail: z.string().trim().email(),
+  organizerPhone: z
+    .string()
+    .trim()
+    .regex(/^\+380\d{9}$/),
 });
 
 export type OsbbInput = z.infer<typeof osbbSchema>;
