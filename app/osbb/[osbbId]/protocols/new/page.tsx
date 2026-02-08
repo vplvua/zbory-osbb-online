@@ -1,11 +1,19 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import ProtocolForm from '@/app/osbb/[osbbId]/protocols/_components/protocol-form';
+import ProtocolCreateSaveButton from '@/app/osbb/[osbbId]/protocols/new/_components/protocol-create-save-button';
 import { createProtocolAction } from '@/app/osbb/[osbbId]/protocols/actions';
+import AppHeader from '@/components/app-header';
 
-export default async function ProtocolNewPage({ params }: { params: Promise<{ osbbId: string }> }) {
+const PROTOCOL_CREATE_FORM_ID = 'protocol-create-form';
+
+type ProtocolNewPageProps = {
+  params: Promise<{ osbbId: string }>;
+  searchParams?: Promise<{ from?: string }>;
+};
+
+export default async function ProtocolNewPage({ params, searchParams }: ProtocolNewPageProps) {
   const session = await getSessionPayload();
   if (!session) {
     redirect('/login');
@@ -20,25 +28,33 @@ export default async function ProtocolNewPage({ params }: { params: Promise<{ os
     redirect('/dashboard');
   }
 
-  return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          <Link
-            href={`/osbb/${osbb.id}/protocols`}
-            className="text-brand underline-offset-4 hover:underline"
-          >
-            ← Назад до протоколів
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold">Новий протокол</h1>
-      </div>
+  const from = (await searchParams)?.from;
+  const isFromDashboard = from === 'dashboard';
+  const backLink = isFromDashboard
+    ? { href: '/dashboard', label: '← Назад на головну' }
+    : { href: `/osbb/${osbb.id}/protocols`, label: '← Назад до протоколів' };
 
-      <ProtocolForm
-        action={createProtocolAction}
-        submitLabel="Створити"
-        defaultValues={{ osbbId: osbb.id, type: 'GENERAL' }}
+  return (
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title={osbb.shortName}
+        containerClassName="max-w-3xl"
+        actionNode={<ProtocolCreateSaveButton formId={PROTOCOL_CREATE_FORM_ID} />}
+        backLink={backLink}
       />
-    </main>
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+          <ProtocolForm
+            action={createProtocolAction}
+            submitLabel="Створити"
+            formId={PROTOCOL_CREATE_FORM_ID}
+            showSubmitButton={false}
+            title="Новий протокол"
+            defaultValues={{ osbbId: osbb.id, type: 'GENERAL' }}
+          />
+        </div>
+      </main>
+    </div>
   );
 }

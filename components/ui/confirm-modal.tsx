@@ -3,12 +3,16 @@
 import { useEffect, useId } from 'react';
 import { Button } from '@/components/ui/button';
 
+type ButtonVariant = 'primary' | 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+
 type ConfirmModalProps = {
   open: boolean;
   title: string;
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmVariant?: ButtonVariant;
+  showCancel?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 };
@@ -19,6 +23,8 @@ export function ConfirmModal({
   description,
   confirmLabel = 'Видалити',
   cancelLabel = 'Скасувати',
+  confirmVariant = 'destructive',
+  showCancel = true,
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
@@ -68,10 +74,12 @@ export function ConfirmModal({
         </h3>
         <p className="text-muted-foreground mt-2 text-sm">{description}</p>
         <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            {cancelLabel}
-          </Button>
-          <Button type="button" variant="destructive" onClick={onConfirm} autoFocus>
+          {showCancel ? (
+            <Button type="button" variant="outline" onClick={onClose}>
+              {cancelLabel}
+            </Button>
+          ) : null}
+          <Button type="button" variant={confirmVariant} onClick={onConfirm} autoFocus>
             {confirmLabel}
           </Button>
         </div>

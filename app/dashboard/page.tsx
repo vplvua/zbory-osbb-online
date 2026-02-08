@@ -59,6 +59,28 @@ function SheetsIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function EditIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+    </svg>
+  );
+}
+
+function ViewListIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="M8 6h13" />
+      <path d="M8 12h13" />
+      <path d="M8 18h13" />
+      <circle cx="4" cy="6" r="1" />
+      <circle cx="4" cy="12" r="1" />
+      <circle cx="4" cy="18" r="1" />
+    </svg>
+  );
+}
+
 function CardActions({
   links,
 }: {
@@ -66,25 +88,39 @@ function CardActions({
     href: string;
     label: string;
     disabled?: boolean;
+    icon?: 'add' | 'edit' | 'view';
   }>;
 }) {
   return (
     <div className="mt-4 flex flex-wrap gap-2">
-      {links.map((link) =>
-        link.disabled ? (
+      {links.map((link) => {
+        const icon =
+          link.icon === 'add' ? (
+            <AddIcon className="h-4 w-4" />
+          ) : link.icon === 'edit' ? (
+            <EditIcon className="h-4 w-4" />
+          ) : link.icon === 'view' ? (
+            <ViewListIcon className="h-4 w-4" />
+          ) : link.label.startsWith('Додати') ? (
+            <AddIcon className="h-4 w-4" />
+          ) : link.label === 'Редагувати' ? (
+            <EditIcon className="h-4 w-4" />
+          ) : null;
+
+        return link.disabled ? (
           <Button key={link.label} type="button" variant="outline" disabled>
-            {link.label.startsWith('Додати') ? <AddIcon className="h-4 w-4" /> : null}
+            {icon}
             {link.label}
           </Button>
         ) : (
           <Link key={link.label} href={link.href}>
             <Button type="button" variant="outline">
-              {link.label.startsWith('Додати') ? <AddIcon className="h-4 w-4" /> : null}
+              {icon}
               {link.label}
             </Button>
           </Link>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -156,20 +192,27 @@ export default async function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <OsbbSettingsIcon className="text-brand h-5 w-5" />
-                  Налаштування ОСББ
+                  Реквізити ОСББ
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-sm">
-                  {selectedOsbb
-                    ? `${selectedOsbb.name}, ${selectedOsbb.address}`
-                    : 'ОСББ не обрано.'}
-                </p>
+                {selectedOsbb ? (
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">{selectedOsbb.shortName}</p>
+                    <p className="text-muted-foreground">{selectedOsbb.address}</p>
+                    <p className="text-muted-foreground">
+                      Опитування проводить: {selectedOsbb.organizerName ?? '—'}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">ОСББ не обрано.</p>
+                )}
                 <CardActions
                   links={[
                     {
                       href: selectedOsbb ? `/osbb/${selectedOsbb.id}/edit` : '#',
-                      label: 'Перейти до налаштувань',
+                      label: 'Редагувати',
+                      icon: 'edit',
                       disabled: !selectedOsbb,
                     },
                   ]}
@@ -192,12 +235,14 @@ export default async function DashboardPage() {
                   links={[
                     {
                       href: '/protocols',
-                      label: 'Перейти до протоколів',
+                      label: 'Переглянути',
+                      icon: 'view',
                       disabled: !selectedOsbb,
                     },
                     {
-                      href: '/protocols/new',
+                      href: '/protocols/new?from=dashboard',
                       label: 'Додати новий протокол',
+                      icon: 'add',
                       disabled: !selectedOsbb,
                     },
                   ]}
@@ -220,12 +265,14 @@ export default async function DashboardPage() {
                   links={[
                     {
                       href: '/owners',
-                      label: 'Перейти до співвласників',
+                      label: 'Переглянути',
+                      icon: 'view',
                       disabled: !selectedOsbb,
                     },
                     {
                       href: '/owners/new',
                       label: 'Додати співвласника',
+                      icon: 'add',
                       disabled: !selectedOsbb,
                     },
                   ]}
@@ -246,12 +293,14 @@ export default async function DashboardPage() {
                   links={[
                     {
                       href: '/sheets',
-                      label: 'Перейти до листків',
+                      label: 'Переглянути',
+                      icon: 'view',
                       disabled: !selectedOsbb,
                     },
                     {
                       href: '/sheets/new',
                       label: 'Додати листок опитування',
+                      icon: 'add',
                       disabled: !selectedOsbb,
                     },
                   ]}

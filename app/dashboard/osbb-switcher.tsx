@@ -58,7 +58,12 @@ export default function OsbbSwitcher({
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="outline"
+        className="shrink-0 whitespace-nowrap"
+        onClick={() => setOpen(true)}
+      >
         Змінити ОСББ
       </Button>
 
@@ -96,8 +101,7 @@ export default function OsbbSwitcher({
                         className={`border-border hover:bg-surface-muted w-full rounded-lg border p-4 text-left transition ${selectedOsbbId === osbb.id ? 'border-brand bg-surface-muted border-2' : ''}`}
                       >
                         <p className="text-base font-semibold">{osbb.shortName}</p>
-                        <p className="text-muted-foreground mt-1 text-sm">{osbb.name}</p>
-                        <p className="text-muted-foreground text-sm">{osbb.address}</p>
+                        <p className="text-muted-foreground mt-1 text-sm">{osbb.address}</p>
                       </button>
                     </form>
                   ))}

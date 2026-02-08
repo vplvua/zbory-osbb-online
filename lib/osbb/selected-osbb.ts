@@ -5,6 +5,7 @@ export type OsbbSummary = {
   name: string;
   shortName: string;
   address: string;
+  organizerName: string | null;
 };
 
 export type SelectedOsbbResolution = {
@@ -25,6 +26,7 @@ async function getUserOsbbs(userId: string): Promise<OsbbSummary[]> {
       name: true,
       shortName: true,
       address: true,
+      organizerName: true,
     },
   });
 }

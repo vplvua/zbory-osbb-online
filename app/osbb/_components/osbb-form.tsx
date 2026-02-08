@@ -12,6 +12,8 @@ const initialState: OsbbFormState = {};
 
 type OsbbFormProps = {
   action: (state: OsbbFormState, formData: FormData) => Promise<OsbbFormState>;
+  formId?: string;
+  showSubmitButton?: boolean;
   defaultValues?: {
     id?: string;
     name?: string;
@@ -25,16 +27,22 @@ type OsbbFormProps = {
   submitLabel: string;
 };
 
-export default function OsbbForm({ action, defaultValues, submitLabel }: OsbbFormProps) {
+export default function OsbbForm({
+  action,
+  formId,
+  showSubmitButton = true,
+  defaultValues,
+  submitLabel,
+}: OsbbFormProps) {
   const [state, formAction] = useActionState(action, initialState);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Дані ОСББ</CardTitle>
+        <CardTitle>Реквізити ОСББ</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-4">
+        <form id={formId} action={formAction} className="space-y-4">
           {defaultValues?.id ? <input type="hidden" name="id" value={defaultValues.id} /> : null}
 
           <div className="space-y-2">
@@ -110,7 +118,7 @@ export default function OsbbForm({ action, defaultValues, submitLabel }: OsbbFor
 
           {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
-          <Button type="submit">{submitLabel}</Button>
+          {showSubmitButton ? <Button type="submit">{submitLabel}</Button> : null}
         </form>
       </CardContent>
     </Card>

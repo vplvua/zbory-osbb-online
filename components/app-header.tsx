@@ -63,9 +63,11 @@ export default function AppHeader({
     <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/85 sticky top-0 z-40 border-b backdrop-blur">
       <div className={cn('mx-auto w-full px-6 py-4', containerClassName)}>
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Image src="/moeosbb.svg" alt="Логотип МОЄ ОСББ" width={40} height={40} priority />
-            <p className="text-xl font-semibold">{title}</p>
+            <p className="truncate text-xl font-semibold" title={title}>
+              {title}
+            </p>
           </div>
           {actionNode ?? (actionButton ? <HeaderAction actionButton={actionButton} /> : null)}
         </div>

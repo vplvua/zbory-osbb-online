@@ -1,5 +1,6 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import AppHeader from '@/components/app-header';
+import OsbbCreateSaveButton from '@/app/osbb/new/_components/osbb-create-save-button';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import OsbbForm from '@/app/osbb/_components/osbb-form';
 import { createOsbbAction } from '@/app/osbb/actions';
@@ -11,17 +12,25 @@ export default async function OsbbNewPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          <Link href="/dashboard" className="text-brand underline-offset-4 hover:underline">
-            ← Назад до дашборду
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold">Нове ОСББ</h1>
-      </div>
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title="Нове ОСББ"
+        containerClassName="max-w-3xl"
+        actionNode={<OsbbCreateSaveButton formId="osbb-create-form" />}
+        backLink={{ href: '/dashboard', label: '← Назад на головну' }}
+      />
 
-      <OsbbForm action={createOsbbAction} submitLabel="Створити" />
-    </main>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+          <p className="text-muted-foreground text-sm">Усі поля обов&apos;язкові.</p>
+          <OsbbForm
+            action={createOsbbAction}
+            formId="osbb-create-form"
+            showSubmitButton={false}
+            submitLabel="Зберегти"
+          />
+        </div>
+      </main>
+    </div>
   );
 }

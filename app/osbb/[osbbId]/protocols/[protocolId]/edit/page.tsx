@@ -1,20 +1,14 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import ProtocolEditForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/edit/_components/protocol-edit-form';
+import ProtocolEditSaveButton from '@/app/osbb/[osbbId]/protocols/[protocolId]/edit/_components/protocol-edit-save-button';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
-import ProtocolForm from '@/app/osbb/[osbbId]/protocols/_components/protocol-form';
-import {
-  addQuestionAction,
-  deleteProtocolAction,
-  deleteQuestionAction,
-  updateProtocolAction,
-  updateQuestionAction,
-} from '@/app/osbb/[osbbId]/protocols/actions';
-import {
-  QuestionCreateForm,
-  QuestionItemForm,
-} from '@/app/osbb/[osbbId]/protocols/_components/question-forms';
+import { deleteProtocolAction, updateProtocolAction } from '@/app/osbb/[osbbId]/protocols/actions';
 import DeleteProtocolForm from '@/app/osbb/[osbbId]/protocols/_components/protocol-delete-form';
+import AppHeader from '@/components/app-header';
+
+const PROTOCOL_EDIT_FORM_ID = 'protocol-edit-form';
 
 export default async function ProtocolEditPage({
   params,
@@ -43,75 +37,59 @@ export default async function ProtocolEditPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          <Link
-            href={`/osbb/${protocol.osbbId}/protocols`}
-            className="text-brand underline-offset-4 hover:underline"
-          >
-            ← Назад до протоколів
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold">Редагувати протокол</h1>
-        <p className="text-muted-foreground text-sm">{protocol.osbb.name}</p>
-      </div>
-
-      <ProtocolForm
-        action={updateProtocolAction}
-        submitLabel="Зберегти протокол"
-        defaultValues={{
-          protocolId: protocol.id,
-          number: protocol.number,
-          date: protocol.date.toISOString().split('T')[0],
-          type: protocol.type,
-        }}
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title={protocol.osbb.shortName}
+        containerClassName="max-w-4xl"
+        actionNode={<ProtocolEditSaveButton formId={PROTOCOL_EDIT_FORM_ID} />}
+        backLink={{ href: `/osbb/${protocol.osbbId}/protocols`, label: '← Назад до протоколів' }}
       />
 
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Питання порядку денного</h2>
-        {protocol.questions.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Питання ще не додані.</p>
-        ) : (
-          <div className="space-y-4">
-            {protocol.questions.map((question) => (
-              <QuestionItemForm
-                key={question.id}
-                action={updateQuestionAction}
-                deleteAction={deleteQuestionAction}
-                question={question}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8">
+          <ProtocolEditForm
+            formId={PROTOCOL_EDIT_FORM_ID}
+            action={updateProtocolAction}
+            defaultValues={{
+              protocolId: protocol.id,
+              number: protocol.number,
+              date: protocol.date.toISOString().split('T')[0],
+              type: protocol.type,
+              questions: protocol.questions.map((question) => ({
+                id: question.id,
+                text: question.text,
+                proposal: question.proposal,
+                requiresTwoThirds: question.requiresTwoThirds,
+              })),
+            }}
+          />
 
-      <QuestionCreateForm action={addQuestionAction} protocolId={protocol.id} />
+          <section className="border-border rounded-lg border p-6">
+            <h2 className="text-lg font-semibold">Співвласники</h2>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Оберіть співвласників з реєстру ОСББ або створіть нового, після чого сформуйте листки.
+            </p>
+            <div className="mt-4">
+              <Link
+                href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners`}
+                className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
+              >
+                Перейти до співвласників
+              </Link>
+            </div>
+          </section>
 
-      <section className="border-border rounded-lg border p-6">
-        <h2 className="text-lg font-semibold">Співвласники</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Оберіть співвласників з реєстру ОСББ або створіть нового, після чого сформуйте листки.
-        </p>
-        <div className="mt-4">
-          <Link
-            href={`/osbb/${protocol.osbbId}/protocols/${protocol.id}/owners`}
-            className="bg-brand text-brand-foreground hover:bg-brand-hover inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
-          >
-            Перейти до співвласників
-          </Link>
+          <section className="border-border rounded-lg border p-6">
+            <h2 className="text-lg font-semibold">Видалення протоколу</h2>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Протокол буде видалено без можливості відновлення.
+            </p>
+            <div className="mt-4">
+              <DeleteProtocolForm protocolId={protocol.id} action={deleteProtocolAction} />
+            </div>
+          </section>
         </div>
-      </section>
-
-      <section className="border-border rounded-lg border p-6">
-        <h2 className="text-lg font-semibold">Видалення протоколу</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Протокол буде видалено без можливості відновлення.
-        </p>
-        <div className="mt-4">
-          <DeleteProtocolForm protocolId={protocol.id} action={deleteProtocolAction} />
-        </div>
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

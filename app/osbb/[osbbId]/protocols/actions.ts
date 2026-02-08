@@ -28,6 +28,85 @@ function getQuestionFormData(formData: FormData) {
   };
 }
 
+type ParsedQuestionInput = {
+  id?: string;
+  orderNumber: number;
+  text: string;
+  proposal: string;
+  requiresTwoThirds: boolean;
+};
+
+function parseQuestionsFromFormData(formData: FormData): ParsedQuestionInput[] {
+  const questionMap = new Map<
+    number,
+    {
+      id?: string;
+      text?: string;
+      proposal?: string;
+      requiresTwoThirds: boolean;
+    }
+  >();
+
+  for (const [key, value] of formData.entries()) {
+    const match = key.match(/^questions\.(\d+)\.(id|text|proposal|requiresTwoThirds)$/);
+    if (!match) {
+      continue;
+    }
+
+    const index = Number(match[1]);
+    const field = match[2];
+
+    if (!questionMap.has(index)) {
+      questionMap.set(index, {
+        requiresTwoThirds: false,
+      });
+    }
+
+    const question = questionMap.get(index);
+    if (!question) {
+      continue;
+    }
+
+    if (field === 'requiresTwoThirds') {
+      question.requiresTwoThirds = true;
+      continue;
+    }
+
+    const stringValue = String(value ?? '').trim();
+    if (field === 'id') {
+      question.id = stringValue || undefined;
+      continue;
+    }
+
+    if (field === 'text') {
+      question.text = stringValue;
+      continue;
+    }
+
+    question.proposal = stringValue;
+  }
+
+  return Array.from(questionMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([index, question]) => {
+      const parsed = questionSchema.safeParse({
+        orderNumber: index + 1,
+        text: question.text ?? '',
+        proposal: question.proposal ?? '',
+        requiresTwoThirds: question.requiresTwoThirds,
+      });
+
+      if (!parsed.success) {
+        throw new Error('QUESTION_VALIDATION_ERROR');
+      }
+
+      return {
+        id: question.id,
+        ...parsed.data,
+      };
+    });
+}
+
 async function ensureProtocolOwner(protocolId: string, userId: string) {
   return prisma.protocol.findFirst({
     where: {
@@ -79,7 +158,7 @@ export async function createProtocolAction(
     return { error: 'Перевірте номер протоколу, дату та тип.' };
   }
 
-  await prisma.protocol.create({
+  const protocol = await prisma.protocol.create({
     data: {
       osbbId,
       number: parsed.data.number,
@@ -88,7 +167,7 @@ export async function createProtocolAction(
     },
   });
 
-  redirect(`/osbb/${osbbId}/protocols`);
+  redirect(`/osbb/${osbbId}/protocols/${protocol.id}/edit`);
 }
 
 export async function updateProtocolAction(
@@ -119,16 +198,93 @@ export async function updateProtocolAction(
     return { error: 'Перевірте номер протоколу, дату та тип.' };
   }
 
-  await prisma.protocol.update({
-    where: { id: protocol.id },
-    data: {
-      number: parsed.data.number,
-      date: new Date(parsed.data.date),
-      type: parsed.data.type,
-    },
+  let questions: ParsedQuestionInput[] = [];
+  try {
+    questions = parseQuestionsFromFormData(formData);
+  } catch {
+    return {
+      error: 'Перевірте всі питання: текст і пропозиція мають бути щонайменше 10 символів.',
+    };
+  }
+
+  const duplicateQuestionIds = new Set<string>();
+  for (const question of questions) {
+    if (!question.id) {
+      continue;
+    }
+
+    if (duplicateQuestionIds.has(question.id)) {
+      return { error: 'Некоректні дані питань. Оновіть сторінку та спробуйте ще раз.' };
+    }
+
+    duplicateQuestionIds.add(question.id);
+  }
+
+  const existingQuestions = await prisma.question.findMany({
+    where: { protocolId: protocol.id },
+    select: { id: true },
+  });
+  const existingQuestionIds = new Set(existingQuestions.map((question) => question.id));
+  const incomingQuestionIds = questions
+    .map((question) => question.id)
+    .filter((questionId): questionId is string => Boolean(questionId));
+
+  for (const questionId of incomingQuestionIds) {
+    if (!existingQuestionIds.has(questionId)) {
+      return { error: 'Некоректні дані питань. Оновіть сторінку та спробуйте ще раз.' };
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.protocol.update({
+      where: { id: protocol.id },
+      data: {
+        number: parsed.data.number,
+        date: new Date(parsed.data.date),
+        type: parsed.data.type,
+      },
+    });
+
+    if (incomingQuestionIds.length > 0) {
+      await tx.question.deleteMany({
+        where: {
+          protocolId: protocol.id,
+          id: { notIn: incomingQuestionIds },
+        },
+      });
+    } else {
+      await tx.question.deleteMany({
+        where: { protocolId: protocol.id },
+      });
+    }
+
+    for (const question of questions) {
+      if (question.id) {
+        await tx.question.update({
+          where: { id: question.id },
+          data: {
+            orderNumber: question.orderNumber,
+            text: question.text,
+            proposal: question.proposal,
+            requiresTwoThirds: question.requiresTwoThirds,
+          },
+        });
+        continue;
+      }
+
+      await tx.question.create({
+        data: {
+          protocolId: protocol.id,
+          orderNumber: question.orderNumber,
+          text: question.text,
+          proposal: question.proposal,
+          requiresTwoThirds: question.requiresTwoThirds,
+        },
+      });
+    }
   });
 
-  redirect(`/osbb/${protocol.osbbId}/protocols`);
+  redirect(`/osbb/${protocol.osbbId}/protocols/${protocol.id}/edit`);
 }
 
 export async function deleteProtocolAction(

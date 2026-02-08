@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import AppHeader from '@/components/app-header';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
+import OsbbEditSaveButton from '@/app/osbb/[osbbId]/edit/_components/osbb-edit-save-button';
 import OsbbForm from '@/app/osbb/_components/osbb-form';
 import OsbbDeleteForm from '@/app/osbb/_components/osbb-delete-form';
 import { deleteOsbbAction, updateOsbbAction } from '@/app/osbb/actions';
@@ -35,6 +36,7 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
       <AppHeader
         title={osbb.shortName}
         containerClassName="max-w-3xl"
+        actionNode={<OsbbEditSaveButton formId="osbb-edit-form" />}
         backLink={{ href: '/dashboard', label: '← Назад на головну' }}
       />
 
@@ -42,6 +44,8 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
           <OsbbForm
             action={updateOsbbAction}
+            formId="osbb-edit-form"
+            showSubmitButton={false}
             submitLabel="Зберегти"
             defaultValues={{
               id: osbb.id,

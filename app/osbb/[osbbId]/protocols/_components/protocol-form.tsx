@@ -19,18 +19,28 @@ type ProtocolFormProps = {
     type?: 'ESTABLISHMENT' | 'GENERAL';
   };
   submitLabel: string;
+  formId?: string;
+  showSubmitButton?: boolean;
+  title?: string;
 };
 
-export default function ProtocolForm({ action, defaultValues, submitLabel }: ProtocolFormProps) {
+export default function ProtocolForm({
+  action,
+  defaultValues,
+  submitLabel,
+  formId,
+  showSubmitButton = true,
+  title = 'Реквізити протоколу',
+}: ProtocolFormProps) {
   const [state, formAction] = useActionState(action, initialState);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Дані протоколу</CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-4">
+        <form id={formId} action={formAction} className="space-y-4">
           {defaultValues?.protocolId ? (
             <input type="hidden" name="protocolId" value={defaultValues.protocolId} />
           ) : null}
@@ -70,7 +80,7 @@ export default function ProtocolForm({ action, defaultValues, submitLabel }: Pro
 
           {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
 
-          <Button type="submit">{submitLabel}</Button>
+          {showSubmitButton ? <Button type="submit">{submitLabel}</Button> : null}
         </form>
       </CardContent>
     </Card>
