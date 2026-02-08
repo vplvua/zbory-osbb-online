@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { selectOsbbAction } from '@/app/dashboard/actions';
 import { Button } from '@/components/ui/button';
 import type { OsbbSummary } from '@/lib/osbb/selected-osbb';
@@ -60,54 +61,57 @@ export default function OsbbSwitcher({
         Змінити ОСББ
       </Button>
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            type="button"
-            aria-label="Закрити вибір ОСББ"
-            className="absolute inset-0 bg-black/45"
-            onClick={closeModal}
-          />
+      {isOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <button
+                type="button"
+                aria-label="Закрити вибір ОСББ"
+                className="absolute inset-0 bg-black/45"
+                onClick={closeModal}
+              />
 
-          <div className="border-border bg-surface relative z-10 w-full max-w-2xl rounded-xl border p-5 shadow-md">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold">{title}</h2>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Усі дії в додатку будуть виконуватися в контексті обраного ОСББ.
-                </p>
+              <div className="border-border bg-surface relative z-10 w-full max-w-2xl rounded-xl border p-5 shadow-md">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold">{title}</h2>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Усі дії в додатку будуть виконуватися в контексті обраного ОСББ.
+                    </p>
+                  </div>
+                  {!requireSelection ? (
+                    <Button type="button" variant="ghost" onClick={closeModal}>
+                      Закрити
+                    </Button>
+                  ) : null}
+                </div>
+
+                <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+                  {osbbs.map((osbb) => (
+                    <form key={osbb.id} action={selectOsbbAction}>
+                      <input type="hidden" name="osbbId" value={osbb.id} />
+                      <button
+                        type="submit"
+                        className={`border-border hover:bg-surface-muted w-full rounded-lg border p-4 text-left transition ${selectedOsbbId === osbb.id ? 'border-brand bg-surface-muted border-2' : ''}`}
+                      >
+                        <p className="text-base font-semibold">{osbb.shortName}</p>
+                        <p className="text-muted-foreground mt-1 text-sm">{osbb.name}</p>
+                        <p className="text-muted-foreground text-sm">{osbb.address}</p>
+                      </button>
+                    </form>
+                  ))}
+                </div>
+
+                <div className="mt-5 flex justify-end">
+                  <Link href="/osbb/new">
+                    <Button type="button">Додати ОСББ</Button>
+                  </Link>
+                </div>
               </div>
-              {!requireSelection ? (
-                <Button type="button" variant="ghost" onClick={closeModal}>
-                  Закрити
-                </Button>
-              ) : null}
-            </div>
-
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-              {osbbs.map((osbb) => (
-                <form key={osbb.id} action={selectOsbbAction}>
-                  <input type="hidden" name="osbbId" value={osbb.id} />
-                  <button
-                    type="submit"
-                    className={`border-border hover:bg-surface-muted w-full rounded-lg border p-4 text-left transition ${selectedOsbbId === osbb.id ? 'ring-ring ring-offset-background ring-2 ring-offset-2' : ''}`}
-                  >
-                    <p className="text-base font-semibold">{osbb.shortName}</p>
-                    <p className="text-muted-foreground mt-1 text-sm">{osbb.name}</p>
-                    <p className="text-muted-foreground text-sm">{osbb.address}</p>
-                  </button>
-                </form>
-              ))}
-            </div>
-
-            <div className="mt-5 flex justify-end">
-              <Link href="/osbb/new">
-                <Button type="button">Додати ОСББ</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

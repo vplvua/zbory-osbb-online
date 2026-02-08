@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import AppHeader from '@/components/app-header';
 import VerifyForm from '@/app/verify/verify-form';
 import { getSessionPayload } from '@/lib/auth/session-token';
 
@@ -16,13 +17,19 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
   const initialPhone = resolvedParams?.phone ?? '';
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-12">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Підтвердження</h1>
-        <p className="text-muted-foreground text-sm">Введіть код з SMS.</p>
-      </header>
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title="Підтвердження"
+        containerClassName="max-w-md"
+        backLink={{ href: '/login', label: '← Змінити номер телефону' }}
+      />
 
-      <VerifyForm initialPhone={initialPhone} />
-    </main>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-6 py-8">
+          <p className="text-muted-foreground text-sm">Введіть код з SMS.</p>
+          <VerifyForm initialPhone={initialPhone} />
+        </div>
+      </main>
+    </div>
   );
 }

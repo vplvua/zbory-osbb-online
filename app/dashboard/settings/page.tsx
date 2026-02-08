@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
+import AppHeader from '@/components/app-header';
 import { getSessionPayload } from '@/lib/auth/session-token';
-import { Button } from '@/components/ui/button';
 import { logoutAction } from '@/app/dashboard/settings/actions';
 import SettingsForm from '@/app/dashboard/settings/settings-form';
 
@@ -11,23 +11,22 @@ export default async function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-12">
-      <header className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">Налаштування</h1>
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title="Налаштування"
+        containerClassName="max-w-3xl"
+        actionButton={{ label: 'Вийти', variant: 'outline', formAction: logoutAction }}
+        backLink={{ href: '/dashboard', label: '← Повернутись на головну' }}
+      />
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
           <p className="text-muted-foreground text-sm">
             Дані уповноваженої особи для роботи з документами.
           </p>
+          <SettingsForm />
         </div>
-
-        <form action={logoutAction}>
-          <Button type="submit" variant="outline">
-            Вийти
-          </Button>
-        </form>
-      </header>
-
-      <SettingsForm />
-    </main>
+      </main>
+    </div>
   );
 }
