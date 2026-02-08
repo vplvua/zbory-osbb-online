@@ -39,7 +39,7 @@ export default async function ProtocolEditPage({
   });
 
   if (!protocol) {
-    redirect('/osbb');
+    redirect('/dashboard');
   }
 
   return (

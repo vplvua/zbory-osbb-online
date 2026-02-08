@@ -17,7 +17,7 @@ export default async function ProtocolNewPage({ params }: { params: Promise<{ os
   });
 
   if (!osbb) {
-    redirect('/osbb');
+    redirect('/dashboard');
   }
 
   return (

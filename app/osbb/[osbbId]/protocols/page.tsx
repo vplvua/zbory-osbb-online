@@ -24,7 +24,7 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
   });
 
   if (!osbb) {
-    redirect('/osbb');
+    redirect('/dashboard');
   }
 
   const protocols = await prisma.protocol.findMany({
@@ -37,8 +37,8 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
         <p className="text-muted-foreground text-sm">
-          <Link href="/osbb" className="text-brand underline-offset-4 hover:underline">
-            ← Назад до ОСББ
+          <Link href="/dashboard" className="text-brand underline-offset-4 hover:underline">
+            ← Назад до дашборду
           </Link>
         </p>
         <div className="flex flex-wrap items-center justify-between gap-4">

@@ -26,15 +26,15 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
   });
 
   if (!osbb) {
-    redirect('/osbb');
+    redirect('/dashboard');
   }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
         <p className="text-muted-foreground text-sm">
-          <Link href="/osbb" className="text-brand underline-offset-4 hover:underline">
-            ← Назад до списку
+          <Link href="/dashboard" className="text-brand underline-offset-4 hover:underline">
+            ← Назад до дашборду
           </Link>
         </p>
         <h1 className="text-2xl font-semibold">Редагувати ОСББ</h1>

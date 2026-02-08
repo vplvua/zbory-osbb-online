@@ -37,7 +37,7 @@ export default async function OwnerEditPage({
   });
 
   if (!protocol) {
-    redirect('/osbb');
+    redirect('/dashboard');
   }
 
   const [owner, protocolOwner] = await Promise.all([

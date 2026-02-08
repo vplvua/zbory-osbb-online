@@ -24,7 +24,7 @@ export default async function OwnerNewPage({
   });
 
   if (!protocol) {
-    redirect('/osbb');
+    redirect('/dashboard');
   }
 
   return (

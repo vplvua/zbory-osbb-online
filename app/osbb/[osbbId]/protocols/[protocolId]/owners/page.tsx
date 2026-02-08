@@ -72,7 +72,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
   });
 
   if (!protocol) {
-    redirect('/osbb');
+    redirect('/dashboard');
   }
 
   const protocolOwners = await prisma.protocolOwner.findMany({

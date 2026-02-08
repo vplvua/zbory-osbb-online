@@ -85,6 +85,8 @@ model UserSettings {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedOsbbId String?
+  selectedOsbb   OSBB? @relation("SelectedOsbb", fields: [selectedOsbbId], references: [id], onDelete: SetNull)
 
   // API ключі (зашифровані)
   dubidocApiKey  String?
@@ -100,6 +102,8 @@ model UserSettings {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([selectedOsbbId])
 }
 
 model OSBB {
@@ -120,6 +124,7 @@ model OSBB {
 
   protocols Protocol[]
   owners    Owner[]
+  selectedInUserSettings UserSettings[] @relation("SelectedOsbb")
 
   @@index([userId])
 }

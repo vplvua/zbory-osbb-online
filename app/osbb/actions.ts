@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { osbbSchema } from '@/lib/osbb/validation';
+import { resolveSelectedOsbb, setSelectedOsbbForUser } from '@/lib/osbb/selected-osbb';
 
 export type OsbbFormState = {
   error?: string;
@@ -29,7 +30,7 @@ export async function createOsbbAction(_: OsbbFormState, formData: FormData) {
     return { error: 'Перевірте поля: повна назва, коротка назва, адреса, ЄДРПОУ (8 цифр).' };
   }
 
-  await prisma.oSBB.create({
+  const osbb = await prisma.oSBB.create({
     data: {
       userId: session.sub,
       name: parsed.data.name,
@@ -39,7 +40,8 @@ export async function createOsbbAction(_: OsbbFormState, formData: FormData) {
     },
   });
 
-  redirect('/osbb');
+  await setSelectedOsbbForUser(session.sub, osbb.id);
+  redirect('/dashboard');
 }
 
 export async function updateOsbbAction(
@@ -83,7 +85,7 @@ export async function updateOsbbAction(
     },
   });
 
-  redirect('/osbb');
+  redirect('/dashboard');
 }
 
 export async function deleteOsbbAction(
@@ -128,5 +130,6 @@ export async function deleteOsbbAction(
     data: { isDeleted: true },
   });
 
-  redirect('/osbb');
+  await resolveSelectedOsbb(session.sub);
+  redirect('/dashboard');
 }
