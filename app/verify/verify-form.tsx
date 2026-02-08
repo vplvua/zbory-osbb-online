@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 type VerifyFormProps = {
   initialPhone: string;
@@ -48,13 +49,12 @@ export default function VerifyForm({ initialPhone }: VerifyFormProps) {
     <form className="space-y-4" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <Label htmlFor="phone">Телефон</Label>
-        <Input
+        <PhoneInput
           id="phone"
-          type="tel"
           name="phone"
-          placeholder="+380XXXXXXXXX"
           value={phone}
-          onChange={(event) => setPhone(event.target.value)}
+          onValueChange={setPhone}
+          disabled
           required
         />
       </div>

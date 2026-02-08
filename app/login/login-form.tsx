@@ -3,14 +3,15 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 export default function LoginForm() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const isPhoneComplete = /^\+380\d{9}$/.test(phone);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,27 +42,15 @@ export default function LoginForm() {
 
   return (
     <>
-      <p className="text-muted-foreground text-sm">
-        Введіть номер телефону у форматі +380XXXXXXXXX.
-      </p>
-
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <Label htmlFor="phone">Телефон</Label>
-          <Input
-            id="phone"
-            type="tel"
-            name="phone"
-            placeholder="+380XXXXXXXXX"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            required
-          />
+          <Label htmlFor="phone">Ваш номер телефону</Label>
+          <PhoneInput id="phone" name="phone" value={phone} onValueChange={setPhone} required />
         </div>
 
         {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
-        <Button className="w-full" type="submit" disabled={isLoading}>
+        <Button className="w-full" type="submit" disabled={isLoading || !isPhoneComplete}>
           {isLoading ? 'Надсилання...' : 'Надіслати код'}
         </Button>
       </form>

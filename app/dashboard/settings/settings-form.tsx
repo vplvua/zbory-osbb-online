@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 type SettingsFormState = {
   organizerName: string;
@@ -76,6 +77,10 @@ export default function SettingsForm() {
       setForm((current) => ({ ...current, [field]: event.target.value }));
     };
 
+  const updateOrganizerPhone = (phone: string) => {
+    setForm((current) => ({ ...current, organizerPhone: phone }));
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus(null);
@@ -140,11 +145,10 @@ export default function SettingsForm() {
 
         <div className="space-y-2">
           <Label htmlFor="organizerPhone">Телефон</Label>
-          <Input
+          <PhoneInput
             id="organizerPhone"
-            placeholder="+380XXXXXXXXX"
             value={form.organizerPhone}
-            onChange={updateField('organizerPhone')}
+            onValueChange={updateOrganizerPhone}
           />
         </div>
       </section>

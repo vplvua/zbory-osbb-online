@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Textarea } from '@/components/ui/textarea';
 import type { OwnerFormState } from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/actions';
 
@@ -122,12 +123,7 @@ export default function OwnerForm({ action, defaultValues, submitLabel }: OwnerF
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Телефон</Label>
-              <Input
-                id="phone"
-                name="phone"
-                placeholder="+380XXXXXXXXX"
-                defaultValue={defaultValues?.phone ?? ''}
-              />
+              <PhoneInput id="phone" name="phone" defaultValue={defaultValues?.phone ?? ''} />
             </div>
           </div>
 
