@@ -14,6 +14,7 @@ type OsbbFormProps = {
   defaultValues?: {
     id?: string;
     name?: string;
+    shortName?: string;
     address?: string;
     edrpou?: string;
   };
@@ -33,8 +34,18 @@ export default function OsbbForm({ action, defaultValues, submitLabel }: OsbbFor
           {defaultValues?.id ? <input type="hidden" name="id" value={defaultValues.id} /> : null}
 
           <div className="space-y-2">
-            <Label htmlFor="name">Назва</Label>
+            <Label htmlFor="name">Повна назва</Label>
             <Input id="name" name="name" defaultValue={defaultValues?.name ?? ''} required />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="shortName">Коротка назва</Label>
+            <Input
+              id="shortName"
+              name="shortName"
+              defaultValue={defaultValues?.shortName ?? ''}
+              required
+            />
           </div>
 
           <div className="space-y-2">

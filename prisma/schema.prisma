@@ -107,11 +107,12 @@ model OSBB {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name    String
-  address String
-  edrpou  String
-  email   String?
-  phone   String?
+  name      String
+  shortName String
+  address   String
+  edrpou    String
+  email     String?
+  phone     String?
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())

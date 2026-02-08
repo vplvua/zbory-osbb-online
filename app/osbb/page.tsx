@@ -57,7 +57,8 @@ export default async function OsbbListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Назва</TableHead>
+                  <TableHead>Повна назва</TableHead>
+                  <TableHead>Коротка назва</TableHead>
                   <TableHead>Адреса</TableHead>
                   <TableHead>ЄДРПОУ</TableHead>
                   <TableHead>Протоколи</TableHead>
@@ -68,6 +69,7 @@ export default async function OsbbListPage() {
                 {osbbs.map((osbb) => (
                   <TableRow key={osbb.id}>
                     <TableCell className="font-medium">{osbb.name}</TableCell>
+                    <TableCell>{osbb.shortName}</TableCell>
                     <TableCell>{osbb.address}</TableCell>
                     <TableCell>{osbb.edrpou}</TableCell>
                     <TableCell>{osbb._count.protocols}</TableCell>

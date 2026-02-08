@@ -12,6 +12,7 @@ export type OsbbFormState = {
 function getFormData(formData: FormData) {
   return {
     name: String(formData.get('name') ?? ''),
+    shortName: String(formData.get('shortName') ?? ''),
     address: String(formData.get('address') ?? ''),
     edrpou: String(formData.get('edrpou') ?? ''),
   };
@@ -25,13 +26,14 @@ export async function createOsbbAction(_: OsbbFormState, formData: FormData) {
 
   const parsed = osbbSchema.safeParse(getFormData(formData));
   if (!parsed.success) {
-    return { error: 'Перевірте поля: назва, адреса, ЄДРПОУ (8 цифр).' };
+    return { error: 'Перевірте поля: повна назва, коротка назва, адреса, ЄДРПОУ (8 цифр).' };
   }
 
   await prisma.oSBB.create({
     data: {
       userId: session.sub,
       name: parsed.data.name,
+      shortName: parsed.data.shortName,
       address: parsed.data.address,
       edrpou: parsed.data.edrpou,
     },
@@ -56,7 +58,7 @@ export async function updateOsbbAction(
 
   const parsed = osbbSchema.safeParse(getFormData(formData));
   if (!parsed.success) {
-    return { error: 'Перевірте поля: назва, адреса, ЄДРПОУ (8 цифр).' };
+    return { error: 'Перевірте поля: повна назва, коротка назва, адреса, ЄДРПОУ (8 цифр).' };
   }
 
   const osbb = await prisma.oSBB.findFirst({
@@ -75,6 +77,7 @@ export async function updateOsbbAction(
     where: { id: osbb.id },
     data: {
       name: parsed.data.name,
+      shortName: parsed.data.shortName,
       address: parsed.data.address,
       edrpou: parsed.data.edrpou,
     },

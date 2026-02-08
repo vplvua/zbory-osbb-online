@@ -1,0 +1,7 @@
+ALTER TABLE "OSBB" ADD COLUMN "shortName" TEXT;
+
+UPDATE "OSBB"
+SET "shortName" = "name"
+WHERE "shortName" IS NULL;
+
+ALTER TABLE "OSBB" ALTER COLUMN "shortName" SET NOT NULL;

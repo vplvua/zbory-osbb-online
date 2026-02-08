@@ -46,6 +46,7 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
         defaultValues={{
           id: osbb.id,
           name: osbb.name,
+          shortName: osbb.shortName,
           address: osbb.address,
           edrpou: osbb.edrpou,
         }}
