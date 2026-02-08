@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,28 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-12">
+    <main className="login-page mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 py-12">
+      <div className="moeosbb-logo">
+        <Link href="/" className="logo" aria-label="МОЄ ОСББ">
+          <svg
+            className="icon logo"
+            viewBox="0 0 32 32"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden
+          >
+            <path
+              fill="#4C3CFF"
+              d="m25.4 12.3-7.6-5.7a3 3 0 0 0-3.6 0l-7.6 5.7A4 4 0 0 0 5 15.5V22a4 4 0 0 0 4 4h14a4 4 0 0 0 4-4v-6.5a4 4 0 0 0-1.6-3.2"
+            />
+            <path
+              fill="#2AD590"
+              d="m21 14.5-4.2 5.6a1.2 1.2 0 0 1-.9.5h-.1a1.2 1.2 0 0 1-.85-.35l-2.4-2.4a1.2 1.2 0 0 1 1.7-1.7l1.42 1.43 2.77-3.7a1.2 1.2 0 1 1 1.92 1.44Z"
+            />
+          </svg>
+          <span className="logo-text">МОЄ ОСББ</span>
+        </Link>
+      </div>
+
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Вхід</h1>
         <p className="text-muted-foreground text-sm">
