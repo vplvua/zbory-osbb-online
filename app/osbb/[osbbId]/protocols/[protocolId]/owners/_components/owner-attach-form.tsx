@@ -10,7 +10,7 @@ const initialState: ProtocolOwnerFormState = {};
 
 type AvailableOwner = {
   id: string;
-  fullName: string;
+  shortName: string;
   apartmentNumber: string;
 };
 
@@ -38,7 +38,7 @@ export default function OwnerAttachForm({ protocolId, owners, action }: OwnerAtt
         >
           {owners.map((owner) => (
             <option key={owner.id} value={owner.id}>
-              {owner.fullName} (кв. {owner.apartmentNumber})
+              {owner.shortName} (кв. {owner.apartmentNumber})
             </option>
           ))}
         </select>

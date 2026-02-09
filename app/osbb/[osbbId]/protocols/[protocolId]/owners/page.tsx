@@ -16,6 +16,7 @@ import SheetDeleteForm from '@/app/osbb/[osbbId]/protocols/[protocolId]/owners/_
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { formatOwnerShortName } from '@/lib/owner/name';
 import {
   Table,
   TableBody,
@@ -82,10 +83,26 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
         osbbId: protocol.osbbId,
         ...(query
           ? {
-              fullName: {
-                contains: query,
-                mode: 'insensitive',
-              },
+              OR: [
+                {
+                  lastName: {
+                    contains: query,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  firstName: {
+                    contains: query,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  middleName: {
+                    contains: query,
+                    mode: 'insensitive',
+                  },
+                },
+              ],
             }
           : {}),
       },
@@ -109,10 +126,17 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
     },
     select: {
       id: true,
-      fullName: true,
+      lastName: true,
+      firstName: true,
+      middleName: true,
       apartmentNumber: true,
     },
-    orderBy: [{ fullName: 'asc' }, { apartmentNumber: 'asc' }],
+    orderBy: [
+      { lastName: 'asc' },
+      { firstName: 'asc' },
+      { middleName: 'asc' },
+      { apartmentNumber: 'asc' },
+    ],
   });
 
   const sheets = await prisma.sheet.findMany({
@@ -121,7 +145,9 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
       owner: {
         select: {
           id: true,
-          fullName: true,
+          lastName: true,
+          firstName: true,
+          middleName: true,
           apartmentNumber: true,
         },
       },
@@ -172,13 +198,22 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
               <OwnerAttachForm
                 action={attachOwnerToProtocolAction}
                 protocolId={protocol.id}
-                owners={availableOwners}
+                owners={availableOwners.map((owner) => ({
+                  id: owner.id,
+                  shortName: formatOwnerShortName(owner),
+                  apartmentNumber: owner.apartmentNumber,
+                }))}
               />
             )}
           </div>
 
           <form className="flex flex-wrap items-center gap-3" method="get">
-            <Input name="q" placeholder="Пошук за ПІБ" defaultValue={query} className="md:w-64" />
+            <Input
+              name="q"
+              placeholder="Пошук за прізвищем або ім'ям"
+              defaultValue={query}
+              className="md:w-64"
+            />
             <Button type="submit" variant="outline">
               Шукати
             </Button>
@@ -192,7 +227,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ПІБ</TableHead>
+                  <TableHead>Прізвище та ініціали</TableHead>
                   <TableHead>Квартира</TableHead>
                   <TableHead>Площа</TableHead>
                   <TableHead>Телефон</TableHead>
@@ -203,7 +238,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
               <TableBody>
                 {owners.map((owner) => (
                   <TableRow key={owner.id}>
-                    <TableCell className="font-medium">{owner.fullName}</TableCell>
+                    <TableCell className="font-medium">{formatOwnerShortName(owner)}</TableCell>
                     <TableCell>{owner.apartmentNumber}</TableCell>
                     <TableCell>{owner.ownedArea.toString()}</TableCell>
                     <TableCell>{owner.phone ?? '-'}</TableCell>
@@ -286,7 +321,7 @@ export default async function OwnersPage({ params, searchParams }: OwnersPagePro
                     <TableRow key={sheet.id}>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="font-medium">{sheet.owner.fullName}</p>
+                          <p className="font-medium">{formatOwnerShortName(sheet.owner)}</p>
                           <p className="text-muted-foreground text-xs">
                             кв. {sheet.owner.apartmentNumber}
                           </p>

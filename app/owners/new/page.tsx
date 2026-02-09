@@ -1,11 +1,18 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import OwnerForm from '@/app/owners/_components/owner-form';
 import { createOwnerAction } from '@/app/owners/actions';
+import OwnerCreateSaveButton from '@/app/owners/new/_components/owner-create-save-button';
+import AppHeader from '@/components/app-header';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
 
-export default async function OwnerNewPage() {
+const OWNER_CREATE_FORM_ID = 'owner-create-form';
+
+type OwnerNewPageProps = {
+  searchParams?: Promise<{ from?: string }>;
+};
+
+export default async function OwnerNewPage({ searchParams }: OwnerNewPageProps) {
   const session = await getSessionPayload();
   if (!session) {
     redirect('/login');
@@ -16,22 +23,36 @@ export default async function OwnerNewPage() {
     redirect('/osbb/new');
   }
 
-  if (!selectedState.selectedOsbb) {
+  const selectedOsbb = selectedState.selectedOsbb;
+  if (!selectedOsbb) {
     redirect('/dashboard');
   }
 
-  return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          <Link href="/owners" className="text-brand underline-offset-4 hover:underline">
-            ← Назад до співвласників
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold">Новий співвласник ОСББ</h1>
-      </div>
+  const from = (await searchParams)?.from;
+  const backLink =
+    from === 'dashboard'
+      ? { href: '/dashboard', label: '← Назад на головну' }
+      : { href: '/owners', label: '← Назад до співвласників' };
 
-      <OwnerForm action={createOwnerAction} submitLabel="Додати" />
-    </main>
+  return (
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title={selectedOsbb.shortName}
+        containerClassName="max-w-4xl"
+        actionNode={<OwnerCreateSaveButton formId={OWNER_CREATE_FORM_ID} />}
+        backLink={backLink}
+      />
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8">
+          <OwnerForm
+            action={createOwnerAction}
+            submitLabel="Додати"
+            formId={OWNER_CREATE_FORM_ID}
+            showSubmitButton={false}
+          />
+        </div>
+      </main>
+    </div>
   );
 }

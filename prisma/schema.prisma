@@ -176,7 +176,9 @@ model Owner {
   osbbId String
   osbb   OSBB   @relation(fields: [osbbId], references: [id], onDelete: Cascade)
 
-  fullName             String
+  lastName             String
+  firstName            String
+  middleName           String
   apartmentNumber      String
   totalArea            Decimal @db.Decimal(10, 2)
   ownershipNumerator   Int
@@ -203,6 +205,7 @@ model Owner {
   sheets         Sheet[]
 
   @@index([osbbId])
+  @@index([lastName])
 }
 
 model ProtocolOwner {

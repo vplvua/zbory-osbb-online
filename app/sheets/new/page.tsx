@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { prisma } from '@/lib/db/prisma';
+import { formatOwnerShortName } from '@/lib/owner/name';
 import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA');
@@ -39,10 +40,17 @@ export default async function SheetNewPage() {
     }),
     prisma.owner.findMany({
       where: { osbbId: selectedOsbb.id },
-      orderBy: [{ fullName: 'asc' }, { apartmentNumber: 'asc' }],
+      orderBy: [
+        { lastName: 'asc' },
+        { firstName: 'asc' },
+        { middleName: 'asc' },
+        { apartmentNumber: 'asc' },
+      ],
       select: {
         id: true,
-        fullName: true,
+        lastName: true,
+        firstName: true,
+        middleName: true,
         apartmentNumber: true,
       },
     }),
@@ -96,7 +104,11 @@ export default async function SheetNewPage() {
             number: protocol.number,
             dateLabel: DATE_FORMATTER.format(protocol.date),
           }))}
-          owners={owners}
+          owners={owners.map((owner) => ({
+            id: owner.id,
+            shortName: formatOwnerShortName(owner),
+            apartmentNumber: owner.apartmentNumber,
+          }))}
           defaultSurveyDate={defaultSurveyDate}
         />
       )}

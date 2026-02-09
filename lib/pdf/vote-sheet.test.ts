@@ -18,7 +18,7 @@ describe('vote sheet pdf generator', () => {
         address: 'Test street 1',
       },
       owner: {
-        fullName: 'Ivan Petrenko',
+        shortName: 'Petrenko I.P.',
         apartmentNumber: '15',
         totalArea: '67.50',
         ownershipDocument: 'Договір купівлі-продажу №123',

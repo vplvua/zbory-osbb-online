@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db/prisma';
+import { formatOwnerShortName } from '@/lib/owner/name';
 import { generateVoteSheetPdf, writeVoteSheetPdfToTemp } from '@/lib/pdf/vote-sheet';
 
 export const PDF_TARGET_MS = 3000;
@@ -39,7 +40,9 @@ async function loadSheetPdfContext(sheetId: string) {
       surveyDate: true,
       owner: {
         select: {
-          fullName: true,
+          lastName: true,
+          firstName: true,
+          middleName: true,
           apartmentNumber: true,
           totalArea: true,
           ownershipDocument: true,
@@ -114,7 +117,7 @@ export async function generateAndStoreSheetPdf(sheetId: string): Promise<Generat
         address: sheet.protocol.osbb.address,
       },
       owner: {
-        fullName: sheet.owner.fullName,
+        shortName: formatOwnerShortName(sheet.owner),
         apartmentNumber: sheet.owner.apartmentNumber,
         totalArea: sheet.owner.totalArea.toString(),
         ownershipDocument: sheet.owner.ownershipDocument,

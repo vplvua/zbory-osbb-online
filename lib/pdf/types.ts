@@ -20,7 +20,7 @@ export type VoteSheetPdfInput = {
     address: string;
   };
   owner: {
-    fullName: string;
+    shortName: string;
     apartmentNumber: string;
     totalArea: string;
     ownershipDocument: string;

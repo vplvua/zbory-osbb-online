@@ -130,7 +130,7 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
       <section className="border-border bg-surface rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Ваші дані</h2>
         <div className="text-foreground mt-3 space-y-1 text-sm">
-          <p>ПІБ: {sheet.owner.fullName}</p>
+          <p>Співвласник: {sheet.owner.shortName}</p>
           <p>Квартира: {sheet.owner.apartmentNumber}</p>
           <p>
             Площа: {sheet.owner.ownedArea} м² (частка: {sheet.owner.ownershipNumerator}/

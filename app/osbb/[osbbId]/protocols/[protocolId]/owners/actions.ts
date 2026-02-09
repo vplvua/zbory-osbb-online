@@ -33,7 +33,9 @@ function normalizeOptional(value?: string) {
 
 function getOwnerFormData(formData: FormData) {
   return {
-    fullName: String(formData.get('fullName') ?? ''),
+    lastName: String(formData.get('lastName') ?? ''),
+    firstName: String(formData.get('firstName') ?? ''),
+    middleName: String(formData.get('middleName') ?? ''),
     apartmentNumber: String(formData.get('apartmentNumber') ?? ''),
     totalArea: formData.get('totalArea'),
     ownershipNumerator: formData.get('ownershipNumerator'),
@@ -209,7 +211,9 @@ export async function createOwnerAction(
     const owner = await tx.owner.create({
       data: {
         osbbId: protocol.osbbId,
-        fullName: parsed.data.fullName,
+        lastName: parsed.data.lastName,
+        firstName: parsed.data.firstName,
+        middleName: parsed.data.middleName,
         apartmentNumber: parsed.data.apartmentNumber,
         totalArea: new Prisma.Decimal(parsed.data.totalArea),
         ownershipNumerator: parsed.data.ownershipNumerator,
@@ -338,7 +342,9 @@ export async function updateOwnerAction(
   await prisma.owner.update({
     where: { id: owner.id },
     data: {
-      fullName: parsed.data.fullName,
+      lastName: parsed.data.lastName,
+      firstName: parsed.data.firstName,
+      middleName: parsed.data.middleName,
       apartmentNumber: parsed.data.apartmentNumber,
       totalArea: new Prisma.Decimal(parsed.data.totalArea),
       ownershipNumerator: parsed.data.ownershipNumerator,

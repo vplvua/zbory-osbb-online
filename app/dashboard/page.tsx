@@ -270,7 +270,7 @@ export default async function DashboardPage() {
                       disabled: !selectedOsbb,
                     },
                     {
-                      href: '/owners/new',
+                      href: '/owners/new?from=dashboard',
                       label: 'Додати співвласника',
                       icon: 'add',
                       disabled: !selectedOsbb,

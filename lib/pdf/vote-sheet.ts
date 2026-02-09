@@ -249,9 +249,13 @@ export async function generateVoteSheetPdf(input: VoteSheetPdfInput): Promise<Vo
         drawWrappedParagraph(context, `1. Дата опитування: ${formatDate(input.surveyDate)}`, {
           gapAfter: 4,
         });
-        drawWrappedParagraph(context, `2. ПІБ співвласника: ${input.owner.fullName}`, {
-          gapAfter: 4,
-        });
+        drawWrappedParagraph(
+          context,
+          `2. Прізвище та ініціали співвласника: ${input.owner.shortName}`,
+          {
+            gapAfter: 4,
+          },
+        );
         drawWrappedParagraph(
           context,
           `3. Адреса та номер квартири: ${input.osbb.address}, кв. ${input.owner.apartmentNumber}`,

@@ -82,7 +82,9 @@ export default async function OwnerEditPage({
         defaultValues={{
           ownerId: owner.id,
           protocolId: protocol.id,
-          fullName: owner.fullName,
+          lastName: owner.lastName,
+          firstName: owner.firstName,
+          middleName: owner.middleName,
           apartmentNumber: owner.apartmentNumber,
           totalArea: owner.totalArea.toString(),
           ownershipNumerator: String(owner.ownershipNumerator),

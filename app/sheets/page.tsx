@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { prisma } from '@/lib/db/prisma';
+import { formatOwnerShortName } from '@/lib/owner/name';
 import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
 
 const SHEET_STATUS_LABELS: Record<SheetStatus, string> = {
@@ -36,7 +37,7 @@ function getDisplaySheetStatus(status: SheetStatus, expiresAt: Date): SheetStatu
 }
 
 type SheetsPageProps = {
-  searchParams?: Promise<{ protocolId?: string }>;
+  searchParams?: Promise<{ protocolId?: string; apartment?: string; ownerId?: string }>;
 };
 
 export default async function SheetsPage({ searchParams }: SheetsPageProps) {
@@ -55,7 +56,10 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
     redirect('/dashboard');
   }
 
-  const selectedProtocolId = (await searchParams)?.protocolId?.trim() ?? '';
+  const params = await searchParams;
+  const selectedProtocolId = params?.protocolId?.trim() ?? '';
+  const apartmentFilter = params?.apartment?.trim() ?? '';
+  const selectedOwnerId = params?.ownerId?.trim() ?? '';
 
   const protocols = await prisma.protocol.findMany({
     where: { osbbId: selectedOsbb.id },
@@ -71,18 +75,44 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
     ? selectedProtocolId
     : '';
 
+  const ownerFilter = selectedOwnerId
+    ? await prisma.owner.findFirst({
+        where: {
+          id: selectedOwnerId,
+          osbbId: selectedOsbb.id,
+        },
+        select: {
+          id: true,
+          lastName: true,
+          firstName: true,
+          middleName: true,
+          apartmentNumber: true,
+        },
+      })
+    : null;
+
   const sheets = await prisma.sheet.findMany({
     where: {
       protocol: {
         osbbId: selectedOsbb.id,
       },
       ...(protocolFilter ? { protocolId: protocolFilter } : {}),
+      ...(ownerFilter ? { ownerId: ownerFilter.id } : {}),
+      ...(apartmentFilter
+        ? {
+            owner: {
+              apartmentNumber: apartmentFilter,
+            },
+          }
+        : {}),
     },
     include: {
       owner: {
         select: {
           id: true,
-          fullName: true,
+          lastName: true,
+          firstName: true,
+          middleName: true,
           apartmentNumber: true,
         },
       },
@@ -125,6 +155,10 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <form method="get" className="flex flex-wrap items-end gap-3">
+            {ownerFilter ? <input type="hidden" name="ownerId" value={ownerFilter.id} /> : null}
+            {apartmentFilter ? (
+              <input type="hidden" name="apartment" value={apartmentFilter} />
+            ) : null}
             <div className="space-y-2">
               <label htmlFor="protocolId" className="text-sm font-medium">
                 Фільтр за протоколом
@@ -148,8 +182,53 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
             </Button>
           </form>
 
+          {apartmentFilter ? (
+            <div className="border-border bg-surface-muted flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Фільтр за квартирою:</span>
+              <span className="font-medium">кв. {apartmentFilter}</span>
+              <Link
+                href={
+                  protocolFilter
+                    ? `/sheets?protocolId=${encodeURIComponent(protocolFilter)}${
+                        ownerFilter ? `&ownerId=${encodeURIComponent(ownerFilter.id)}` : ''
+                      }`
+                    : '/sheets'
+                }
+                className="text-brand underline-offset-4 hover:underline"
+              >
+                Скинути
+              </Link>
+            </div>
+          ) : null}
+
+          {ownerFilter ? (
+            <div className="border-border bg-surface-muted flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Фільтр за співвласником:</span>
+              <span className="font-medium">{formatOwnerShortName(ownerFilter)}</span>
+              <span className="text-muted-foreground">кв. {ownerFilter.apartmentNumber}</span>
+              <Link
+                href={
+                  protocolFilter
+                    ? `/sheets?protocolId=${encodeURIComponent(protocolFilter)}${
+                        apartmentFilter ? `&apartment=${encodeURIComponent(apartmentFilter)}` : ''
+                      }`
+                    : '/sheets'
+                }
+                className="text-brand underline-offset-4 hover:underline"
+              >
+                Скинути
+              </Link>
+            </div>
+          ) : null}
+
           {sheets.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Листків опитування ще не створено.</p>
+            <p className="text-muted-foreground text-sm">
+              {ownerFilter
+                ? `Для співвласника ${formatOwnerShortName(ownerFilter)} листків опитування не знайдено.`
+                : apartmentFilter
+                  ? `Для квартири ${apartmentFilter} листків опитування не знайдено.`
+                  : 'Листків опитування ще не створено.'}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1120px] text-sm">
@@ -193,7 +272,7 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                         </td>
                         <td className="px-2 py-3">
                           <div>
-                            <p className="font-medium">{sheet.owner.fullName}</p>
+                            <p className="font-medium">{formatOwnerShortName(sheet.owner)}</p>
                             <p className="text-muted-foreground text-xs">
                               кв. {sheet.owner.apartmentNumber}
                             </p>

@@ -20,7 +20,9 @@ function normalizeOptional(value?: string) {
 
 function getOwnerFormData(formData: FormData) {
   return {
-    fullName: String(formData.get('fullName') ?? ''),
+    lastName: String(formData.get('lastName') ?? ''),
+    firstName: String(formData.get('firstName') ?? ''),
+    middleName: String(formData.get('middleName') ?? ''),
     apartmentNumber: String(formData.get('apartmentNumber') ?? ''),
     totalArea: formData.get('totalArea'),
     ownershipNumerator: formData.get('ownershipNumerator'),
@@ -42,6 +44,20 @@ function calcOwnedArea(totalArea: number, numerator: number, denominator: number
 async function hasAnySheet(ownerId: string) {
   const sheet = await prisma.sheet.findFirst({
     where: { ownerId },
+    select: { id: true },
+  });
+
+  return Boolean(sheet);
+}
+
+async function hasAnySheetForApartment(osbbId: string, apartmentNumber: string) {
+  const sheet = await prisma.sheet.findFirst({
+    where: {
+      owner: {
+        osbbId,
+        apartmentNumber,
+      },
+    },
     select: { id: true },
   });
 
@@ -85,7 +101,9 @@ export async function createOwnerAction(
   await prisma.owner.create({
     data: {
       osbbId: selectedOsbb.id,
-      fullName: parsed.data.fullName,
+      lastName: parsed.data.lastName,
+      firstName: parsed.data.firstName,
+      middleName: parsed.data.middleName,
       apartmentNumber: parsed.data.apartmentNumber,
       totalArea: new Prisma.Decimal(parsed.data.totalArea),
       ownershipNumerator: parsed.data.ownershipNumerator,
@@ -130,20 +148,31 @@ export async function updateOwnerAction(
         isDeleted: false,
       },
     },
-    select: { id: true },
+    select: { id: true, apartmentNumber: true },
   });
 
   if (!owner) {
     return { error: 'Співвласника не знайдено.' };
   }
 
-  if (await hasAnySheet(owner.id)) {
-    return { error: 'Неможливо редагувати співвласника зі створеними листками.' };
+  if (await hasAnySheetForApartment(selectedOsbb.id, owner.apartmentNumber)) {
+    return {
+      error: 'Неможливо редагувати співвласника, для цієї квартири вже є листки опитування.',
+    };
   }
 
   const parsed = ownerSchema.safeParse(getOwnerFormData(formData));
   if (!parsed.success) {
     return { error: 'Перевірте обовʼязкові поля співвласника.' };
+  }
+
+  if (
+    owner.apartmentNumber !== parsed.data.apartmentNumber &&
+    (await hasAnySheetForApartment(selectedOsbb.id, parsed.data.apartmentNumber))
+  ) {
+    return {
+      error: 'Неможливо змінити номер квартири, для цієї квартири вже створені листки опитування.',
+    };
   }
 
   if (parsed.data.phone && !isValidPhone(parsed.data.phone)) {
@@ -159,7 +188,9 @@ export async function updateOwnerAction(
   await prisma.owner.update({
     where: { id: owner.id },
     data: {
-      fullName: parsed.data.fullName,
+      lastName: parsed.data.lastName,
+      firstName: parsed.data.firstName,
+      middleName: parsed.data.middleName,
       apartmentNumber: parsed.data.apartmentNumber,
       totalArea: new Prisma.Decimal(parsed.data.totalArea),
       ownershipNumerator: parsed.data.ownershipNumerator,

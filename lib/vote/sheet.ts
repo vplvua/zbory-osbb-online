@@ -1,5 +1,6 @@
 import { SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
+import { formatOwnerShortName } from '@/lib/owner/name';
 import { isValidPublicToken } from '@/lib/tokens';
 import type { VoteSheetDto } from '@/lib/vote/types';
 
@@ -21,7 +22,9 @@ export async function getVoteSheetByToken(token: string): Promise<VoteSheetDto |
     include: {
       owner: {
         select: {
-          fullName: true,
+          lastName: true,
+          firstName: true,
+          middleName: true,
           apartmentNumber: true,
           ownedArea: true,
           ownershipNumerator: true,
@@ -79,7 +82,7 @@ export async function getVoteSheetByToken(token: string): Promise<VoteSheetDto |
     protocolNumber: sheet.protocol.number,
     osbbName: sheet.protocol.osbb.name,
     owner: {
-      fullName: sheet.owner.fullName,
+      shortName: formatOwnerShortName(sheet.owner),
       apartmentNumber: sheet.owner.apartmentNumber,
       ownedArea: sheet.owner.ownedArea.toString(),
       ownershipNumerator: sheet.owner.ownershipNumerator,

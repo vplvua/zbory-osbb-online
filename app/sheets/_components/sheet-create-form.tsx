@@ -18,7 +18,7 @@ type SheetCreateFormProps = {
   }>;
   owners: Array<{
     id: string;
-    fullName: string;
+    shortName: string;
     apartmentNumber: string;
   }>;
   defaultSurveyDate: string;
@@ -71,7 +71,7 @@ export default function SheetCreateForm({
               </option>
               {owners.map((owner) => (
                 <option key={owner.id} value={owner.id}>
-                  {owner.fullName} (кв. {owner.apartmentNumber})
+                  {owner.shortName} (кв. {owner.apartmentNumber})
                 </option>
               ))}
             </select>

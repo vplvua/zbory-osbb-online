@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 export const ownerSchema = z.object({
-  fullName: z.string().trim().min(5).max(200),
+  lastName: z.string().trim().min(2).max(100),
+  firstName: z.string().trim().min(2).max(100),
+  middleName: z.string().trim().min(2).max(100),
   apartmentNumber: z.string().trim().min(1).max(20),
   totalArea: z.coerce.number().positive(),
   ownershipNumerator: z.coerce.number().int().min(1),
