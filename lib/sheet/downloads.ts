@@ -1,5 +1,4 @@
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { SheetStatus } from '@prisma/client';
 import { getDocumentSigningService, isDubidocConfigured } from '@/lib/dubidoc/adapter';
 import { prisma } from '@/lib/db/prisma';
@@ -17,12 +16,6 @@ type SheetDownloadRecord = {
   status: SheetStatus;
   pdfFileUrl: string | null;
   dubidocDocumentId: string | null;
-};
-
-type SignedSheetArchiveRecord = SheetDownloadRecord & {
-  owner: {
-    apartmentNumber: string;
-  };
 };
 
 function makeMockP7s(sheetId: string, sourcePdfSize: number): Uint8Array {
@@ -173,52 +166,4 @@ export async function preparePublicSheetDownload(
   }
 
   return prepareDownload(sheet, kind);
-}
-
-export async function getSignedSheetsForProtocol(
-  userId: string,
-  osbbId: string,
-  protocolId: string,
-): Promise<SignedSheetArchiveRecord[]> {
-  return prisma.sheet.findMany({
-    where: {
-      protocolId,
-      status: SheetStatus.SIGNED,
-      protocol: {
-        id: protocolId,
-        osbb: {
-          id: osbbId,
-          userId,
-          isDeleted: false,
-        },
-      },
-    },
-    select: {
-      id: true,
-      status: true,
-      pdfFileUrl: true,
-      dubidocDocumentId: true,
-      owner: {
-        select: {
-          apartmentNumber: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
-}
-
-export async function prepareSignedSheetArchiveEntry(
-  sheet: SignedSheetArchiveRecord,
-): Promise<{ name: string; data: Uint8Array }> {
-  const signedBytes = await loadSignedBytes(sheet);
-  const safeApartment = sheet.owner.apartmentNumber.replace(/[^0-9a-zA-Z_-]+/g, '_') || 'na';
-  const filename = `sheet-${sheet.id}-apt-${safeApartment}.p7s`;
-
-  return {
-    name: path.posix.join('signed', filename),
-    data: signedBytes,
-  };
 }

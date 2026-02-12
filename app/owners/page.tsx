@@ -194,7 +194,7 @@ export default async function OwnersPage({ searchParams }: OwnersPageProps) {
                   signed: 0,
                   total: 0,
                 };
-                const sheetsFilterHref = `/sheets?apartment=${encodeURIComponent(owner.apartmentNumber)}`;
+                const sheetsFilterHref = `/sheets?apartment=${encodeURIComponent(owner.apartmentNumber)}&from=owners`;
 
                 return (
                   <Card key={owner.id}>

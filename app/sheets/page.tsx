@@ -2,8 +2,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SheetStatus } from '@prisma/client';
 import SheetDeleteForm from '@/app/sheets/_components/sheet-delete-form';
+import SheetPublicLinkActions from '@/app/sheets/_components/sheet-public-link-actions';
+import SheetsFilters from '@/app/sheets/_components/sheets-filters';
 import SheetRetryForm from '@/app/sheets/_components/sheet-retry-form';
+import SheetsSearch from '@/app/sheets/_components/sheets-search';
 import { deleteSheetAction, retrySheetPdfAction } from '@/app/sheets/actions';
+import AppHeader from '@/components/app-header';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +29,12 @@ const SHEET_STATUS_STYLES: Record<SheetStatus, string> = {
   SIGNED: 'bg-emerald-100 text-emerald-700',
   EXPIRED: 'bg-red-100 text-red-700',
 };
+const VALID_SHEET_STATUSES = [
+  SheetStatus.DRAFT,
+  SheetStatus.PENDING_ORGANIZER,
+  SheetStatus.SIGNED,
+  SheetStatus.EXPIRED,
+] as const;
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA');
 
@@ -36,8 +46,50 @@ function getDisplaySheetStatus(status: SheetStatus, expiresAt: Date): SheetStatu
   return status;
 }
 
+function PdfFileIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path d="M14 2v5h5" stroke="currentColor" strokeWidth="2" />
+      <path d="M8 15h8M8 18h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PdfVisualIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path d="M14 2v5h5" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M8 14.5c.8-1.1 2.1-2 4-2s3.2.9 4 2c-.8 1.1-2.1 2-4 2s-3.2-.9-4-2Z"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <circle cx="12" cy="14.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 type SheetsPageProps = {
-  searchParams?: Promise<{ protocolId?: string; apartment?: string; ownerId?: string }>;
+  searchParams?: Promise<{
+    protocolId?: string;
+    apartment?: string;
+    ownerId?: string;
+    status?: string;
+    q?: string;
+    from?: string;
+    fromOwnerId?: string;
+    fromProtocolId?: string;
+  }>;
 };
 
 export default async function SheetsPage({ searchParams }: SheetsPageProps) {
@@ -60,6 +112,22 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
   const selectedProtocolId = params?.protocolId?.trim() ?? '';
   const apartmentFilter = params?.apartment?.trim() ?? '';
   const selectedOwnerId = params?.ownerId?.trim() ?? '';
+  const statusParam = params?.status?.trim() ?? '';
+  const statusFilter = VALID_SHEET_STATUSES.includes(statusParam as SheetStatus)
+    ? (statusParam as SheetStatus)
+    : '';
+  const query = params?.q?.trim() ?? '';
+  const navigationSourceParam = params?.from?.trim() ?? '';
+  const navigationOwnerIdParam = params?.fromOwnerId?.trim() ?? '';
+  const navigationProtocolIdParam = params?.fromProtocolId?.trim() ?? '';
+  const navigationSource =
+    navigationSourceParam === 'owners' ||
+    navigationSourceParam === 'owner-edit' ||
+    navigationSourceParam === 'protocol-edit'
+      ? navigationSourceParam
+      : 'dashboard';
+  const ownerEditBackOwnerId =
+    navigationSource === 'owner-edit' ? navigationOwnerIdParam || selectedOwnerId : '';
 
   const protocols = await prisma.protocol.findMany({
     where: { osbbId: selectedOsbb.id },
@@ -74,22 +142,115 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
   const protocolFilter = protocols.some((protocol) => protocol.id === selectedProtocolId)
     ? selectedProtocolId
     : '';
+  const protocolEditBackProtocolId =
+    navigationSource === 'protocol-edit'
+      ? protocols.some((protocol) => protocol.id === navigationProtocolIdParam)
+        ? navigationProtocolIdParam
+        : protocolFilter
+      : '';
 
-  const ownerFilter = selectedOwnerId
-    ? await prisma.owner.findFirst({
-        where: {
-          id: selectedOwnerId,
-          osbbId: selectedOsbb.id,
-        },
-        select: {
-          id: true,
-          lastName: true,
-          firstName: true,
-          middleName: true,
-          apartmentNumber: true,
-        },
-      })
-    : null;
+  const owners = await prisma.owner.findMany({
+    where: {
+      osbbId: selectedOsbb.id,
+    },
+    orderBy: [
+      { lastName: 'asc' },
+      { firstName: 'asc' },
+      { middleName: 'asc' },
+      { apartmentNumber: 'asc' },
+    ],
+    select: {
+      id: true,
+      lastName: true,
+      firstName: true,
+      middleName: true,
+      apartmentNumber: true,
+    },
+  });
+
+  const ownerFilter = selectedOwnerId ? owners.find((owner) => owner.id === selectedOwnerId) : null;
+
+  function buildSheetsHref(filters?: {
+    protocolId?: string;
+    apartment?: string;
+    ownerId?: string;
+    status?: string;
+    query?: string;
+  }) {
+    const query = new URLSearchParams();
+
+    if (filters?.protocolId) {
+      query.set('protocolId', filters.protocolId);
+    }
+    if (filters?.apartment) {
+      query.set('apartment', filters.apartment);
+    }
+    if (filters?.ownerId) {
+      query.set('ownerId', filters.ownerId);
+    }
+    if (filters?.status) {
+      query.set('status', filters.status);
+    }
+    if (filters?.query) {
+      query.set('q', filters.query);
+    }
+
+    if (navigationSource === 'owners') {
+      query.set('from', 'owners');
+    }
+    if (navigationSource === 'owner-edit') {
+      query.set('from', 'owner-edit');
+      if (ownerEditBackOwnerId) {
+        query.set('fromOwnerId', ownerEditBackOwnerId);
+      }
+    }
+    if (navigationSource === 'protocol-edit') {
+      query.set('from', 'protocol-edit');
+      if (protocolEditBackProtocolId) {
+        query.set('fromProtocolId', protocolEditBackProtocolId);
+      }
+    }
+
+    const queryString = query.toString();
+    return queryString ? `/sheets?${queryString}` : '/sheets';
+  }
+
+  const backLink =
+    navigationSource === 'owners'
+      ? { href: '/owners', label: '← Назад до співвласників' }
+      : navigationSource === 'owner-edit' && ownerEditBackOwnerId
+        ? {
+            href: `/owners/${ownerEditBackOwnerId}/edit`,
+            label: '← Назад до картки співвласника',
+          }
+        : navigationSource === 'protocol-edit' && protocolEditBackProtocolId
+          ? {
+              href: `/osbb/${selectedOsbb.id}/protocols/${protocolEditBackProtocolId}/edit`,
+              label: '← Назад до протоколу',
+            }
+          : { href: '/dashboard', label: '← Назад на головну' };
+
+  const sheetsNewQuery = new URLSearchParams();
+  if (navigationSource === 'owners') {
+    sheetsNewQuery.set('from', 'owners');
+  }
+  if (navigationSource === 'owner-edit') {
+    sheetsNewQuery.set('from', 'owner-edit');
+    if (ownerEditBackOwnerId) {
+      sheetsNewQuery.set('fromOwnerId', ownerEditBackOwnerId);
+    }
+  } else if (navigationSource === 'protocol-edit') {
+    sheetsNewQuery.set('from', 'protocol-edit');
+    if (protocolEditBackProtocolId) {
+      sheetsNewQuery.set('fromProtocolId', protocolEditBackProtocolId);
+    }
+  } else if (navigationSource !== 'owners') {
+    sheetsNewQuery.set('from', 'sheets');
+  }
+
+  const sheetsNewHref = sheetsNewQuery.toString()
+    ? `/sheets/new?${sheetsNewQuery.toString()}`
+    : '/sheets/new';
 
   const sheets = await prisma.sheet.findMany({
     where: {
@@ -98,10 +259,41 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
       },
       ...(protocolFilter ? { protocolId: protocolFilter } : {}),
       ...(ownerFilter ? { ownerId: ownerFilter.id } : {}),
-      ...(apartmentFilter
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(apartmentFilter || query
         ? {
             owner: {
-              apartmentNumber: apartmentFilter,
+              ...(apartmentFilter ? { apartmentNumber: apartmentFilter } : {}),
+              ...(query
+                ? {
+                    OR: [
+                      {
+                        lastName: {
+                          contains: query,
+                          mode: 'insensitive',
+                        },
+                      },
+                      {
+                        firstName: {
+                          contains: query,
+                          mode: 'insensitive',
+                        },
+                      },
+                      {
+                        middleName: {
+                          contains: query,
+                          mode: 'insensitive',
+                        },
+                      },
+                      {
+                        apartmentNumber: {
+                          contains: query,
+                          mode: 'insensitive',
+                        },
+                      },
+                    ],
+                  }
+                : {}),
             },
           }
         : {}),
@@ -127,242 +319,225 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
     orderBy: [{ createdAt: 'desc' }],
   });
 
+  const currentSheetsHref = buildSheetsHref({
+    protocolId: protocolFilter || undefined,
+    apartment: apartmentFilter || undefined,
+    ownerId: ownerFilter?.id,
+    status: statusFilter || undefined,
+    query: query || undefined,
+  });
+  const protocolOptions = protocols.map((protocol) => ({
+    id: protocol.id,
+    number: protocol.number,
+    dateLabel: DATE_FORMATTER.format(protocol.date),
+  }));
+  const ownerOptions = owners.map((owner) => ({
+    id: owner.id,
+    shortName: formatOwnerShortName(owner),
+    apartmentNumber: owner.apartmentNumber,
+  }));
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          <Link href="/dashboard" className="text-brand underline-offset-4 hover:underline">
-            ← Назад до дашборду
-          </Link>
-        </p>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title={selectedOsbb.shortName}
+        containerClassName="max-w-5xl"
+        backLink={backLink}
+      />
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <h1 className="text-2xl font-semibold">Листки опитування</h1>
-            <p className="text-muted-foreground text-sm">{selectedOsbb.name}</p>
+            <Link href={sheetsNewHref}>
+              <Button type="button">
+                <AddIcon className="h-4 w-4" />
+                Додати листок опитування
+              </Button>
+            </Link>
           </div>
-          <Link href="/sheets/new">
-            <Button type="button">
-              <AddIcon className="h-4 w-4" />
-              Додати листок опитування
-            </Button>
-          </Link>
-        </div>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Список листків</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form method="get" className="flex flex-wrap items-end gap-3">
-            {ownerFilter ? <input type="hidden" name="ownerId" value={ownerFilter.id} /> : null}
-            {apartmentFilter ? (
-              <input type="hidden" name="apartment" value={apartmentFilter} />
-            ) : null}
-            <div className="space-y-2">
-              <label htmlFor="protocolId" className="text-sm font-medium">
-                Фільтр за протоколом
-              </label>
-              <select
-                id="protocolId"
-                name="protocolId"
-                defaultValue={protocolFilter}
-                className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background h-10 min-w-[280px] rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                <option value="">Усі протоколи</option>
-                {protocols.map((protocol) => (
-                  <option key={protocol.id} value={protocol.id}>
-                    {protocol.number} ({DATE_FORMATTER.format(protocol.date)})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button type="submit" variant="outline">
-              Застосувати
-            </Button>
-          </form>
+          <div className="flex flex-wrap items-start gap-2">
+            <SheetsSearch initialQuery={query} className="w-full md:w-80" />
 
-          {apartmentFilter ? (
-            <div className="border-border bg-surface-muted flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <span className="text-muted-foreground">Фільтр за квартирою:</span>
-              <span className="font-medium">кв. {apartmentFilter}</span>
-              <Link
-                href={
-                  protocolFilter
-                    ? `/sheets?protocolId=${encodeURIComponent(protocolFilter)}${
-                        ownerFilter ? `&ownerId=${encodeURIComponent(ownerFilter.id)}` : ''
-                      }`
-                    : '/sheets'
-                }
-                className="text-brand underline-offset-4 hover:underline"
-              >
-                Скинути
-              </Link>
-            </div>
-          ) : null}
+            <SheetsFilters
+              className="w-full md:w-auto"
+              renderMode="controls"
+              protocols={protocolOptions}
+              owners={ownerOptions}
+              selectedProtocolId={protocolFilter}
+              selectedOwnerId={ownerFilter?.id ?? ''}
+              selectedStatus={statusFilter}
+              selectedApartment={apartmentFilter || undefined}
+            />
+          </div>
 
-          {ownerFilter ? (
-            <div className="border-border bg-surface-muted flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <span className="text-muted-foreground">Фільтр за співвласником:</span>
-              <span className="font-medium">{formatOwnerShortName(ownerFilter)}</span>
-              <span className="text-muted-foreground">кв. {ownerFilter.apartmentNumber}</span>
-              <Link
-                href={
-                  protocolFilter
-                    ? `/sheets?protocolId=${encodeURIComponent(protocolFilter)}${
-                        apartmentFilter ? `&apartment=${encodeURIComponent(apartmentFilter)}` : ''
-                      }`
-                    : '/sheets'
-                }
-                className="text-brand underline-offset-4 hover:underline"
-              >
-                Скинути
-              </Link>
-            </div>
-          ) : null}
+          <SheetsFilters
+            renderMode="badges"
+            protocols={protocolOptions}
+            owners={ownerOptions}
+            selectedProtocolId={protocolFilter}
+            selectedOwnerId={ownerFilter?.id ?? ''}
+            selectedStatus={statusFilter}
+            selectedApartment={apartmentFilter || undefined}
+          />
 
           {sheets.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              {ownerFilter
-                ? `Для співвласника ${formatOwnerShortName(ownerFilter)} листків опитування не знайдено.`
-                : apartmentFilter
-                  ? `Для квартири ${apartmentFilter} листків опитування не знайдено.`
-                  : 'Листків опитування ще не створено.'}
+              {query
+                ? 'Нічого не знайдено за вказаним запитом.'
+                : ownerFilter
+                  ? `Для співвласника ${formatOwnerShortName(ownerFilter)} листків опитування не знайдено.`
+                  : apartmentFilter
+                    ? `Для квартири ${apartmentFilter} листків опитування не знайдено.`
+                    : statusFilter
+                      ? 'За обраним статусом листків опитування не знайдено.'
+                      : 'Листків опитування ще не створено.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-sm">
-                <thead>
-                  <tr className="border-border border-b text-left">
-                    <th className="px-2 py-2 font-medium">Протокол</th>
-                    <th className="px-2 py-2 font-medium">Співвласник</th>
-                    <th className="px-2 py-2 font-medium">Дата опитування</th>
-                    <th className="px-2 py-2 font-medium">Дедлайн</th>
-                    <th className="px-2 py-2 font-medium">Статус</th>
-                    <th className="px-2 py-2 font-medium">Публічне посилання</th>
-                    <th className="px-2 py-2 font-medium">Завантаження</th>
-                    <th className="px-2 py-2 text-right font-medium">Дії</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sheets.map((sheet) => {
-                    const displayStatus = getDisplaySheetStatus(sheet.status, sheet.expiresAt);
-                    const votePath = `/vote/${sheet.publicToken}`;
-                    const downloadBasePath = `/api/sheets/${sheet.id}/downloads`;
-                    const hasPdf = Boolean(sheet.pdfFileUrl);
-                    const isSigned = sheet.status === SheetStatus.SIGNED;
-                    const canRetryPdf =
-                      !sheet.pdfUploadPending &&
-                      (sheet.errorPending || (sheet.status !== SheetStatus.DRAFT && !hasPdf));
-                    const canDeleteSheet =
-                      (sheet.status === SheetStatus.DRAFT ||
-                        sheet.status === SheetStatus.EXPIRED) &&
-                      sheet.ownerSignedAt === null &&
-                      sheet.organizerSignedAt === null;
+            <div className="space-y-4">
+              {sheets.map((sheet) => {
+                const displayStatus = getDisplaySheetStatus(sheet.status, sheet.expiresAt);
+                const votePath = `/vote/${sheet.publicToken}`;
+                const downloadBasePath = `/api/sheets/${sheet.id}/downloads`;
+                const hasPdf = Boolean(sheet.pdfFileUrl);
+                const isSigned = sheet.status === SheetStatus.SIGNED;
+                const protocolNumberLabel = sheet.protocol.number.trim().startsWith('№')
+                  ? sheet.protocol.number.trim()
+                  : `№${sheet.protocol.number}`;
+                const canRetryPdf =
+                  !sheet.pdfUploadPending &&
+                  (sheet.errorPending || (sheet.status !== SheetStatus.DRAFT && !hasPdf));
+                const canDeleteSheet =
+                  (sheet.status === SheetStatus.DRAFT || sheet.status === SheetStatus.EXPIRED) &&
+                  sheet.ownerSignedAt === null &&
+                  sheet.organizerSignedAt === null;
 
-                    return (
-                      <tr key={sheet.id} className="border-border border-b align-top">
-                        <td className="px-2 py-3">
-                          <div>
-                            <p className="font-medium">{sheet.protocol.number}</p>
-                            <p className="text-muted-foreground text-xs">
-                              {DATE_FORMATTER.format(sheet.protocol.date)}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-2 py-3">
-                          <div>
-                            <p className="font-medium">{formatOwnerShortName(sheet.owner)}</p>
-                            <p className="text-muted-foreground text-xs">
+                return (
+                  <Card key={sheet.id}>
+                    <CardHeader className="p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle
+                            className="min-w-0 truncate text-base sm:text-lg"
+                            title={formatOwnerShortName(sheet.owner)}
+                          >
+                            {formatOwnerShortName(sheet.owner)}
+                          </CardTitle>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="border-border bg-surface-muted text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium">
                               кв. {sheet.owner.apartmentNumber}
-                            </p>
+                            </span>
+                            <span className="border-border bg-surface-muted text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium">
+                              {protocolNumberLabel} від {DATE_FORMATTER.format(sheet.protocol.date)}
+                            </span>
                           </div>
-                        </td>
-                        <td className="px-2 py-3">{DATE_FORMATTER.format(sheet.surveyDate)}</td>
-                        <td className="px-2 py-3">{DATE_FORMATTER.format(sheet.expiresAt)}</td>
-                        <td className="px-2 py-3">
-                          <span
-                            className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${SHEET_STATUS_STYLES[displayStatus]}`}
-                          >
-                            {SHEET_STATUS_LABELS[displayStatus]}
-                          </span>
-                        </td>
-                        <td className="px-2 py-3">
-                          <Link
-                            href={votePath}
-                            className="text-brand break-all underline-offset-4 hover:underline"
-                          >
-                            {votePath}
-                          </Link>
-                        </td>
-                        <td className="px-2 py-3">
-                          <div className="flex flex-col gap-1">
-                            {sheet.pdfUploadPending ? (
-                              <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-800">
-                                PDF формується
-                              </span>
-                            ) : null}
-                            {sheet.errorPending ? (
-                              <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                                Є помилка PDF
-                              </span>
-                            ) : null}
-                            {hasPdf ? (
-                              <>
-                                <a
-                                  href={`${downloadBasePath}/original`}
-                                  className="text-brand text-xs underline-offset-4 hover:underline"
-                                >
-                                  Оригінал PDF
-                                </a>
-                                <a
-                                  href={`${downloadBasePath}/visualization`}
-                                  className="text-brand text-xs underline-offset-4 hover:underline"
-                                >
-                                  Візуалізація PDF
-                                </a>
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">PDF недоступний</span>
-                            )}
-                            {isSigned ? (
-                              <a
-                                href={`${downloadBasePath}/signed`}
-                                className="text-brand text-xs underline-offset-4 hover:underline"
-                              >
-                                Підписаний .p7s
-                              </a>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-2 py-3">
-                          <div className="flex flex-col items-end gap-2">
-                            {canRetryPdf ? (
-                              <SheetRetryForm action={retrySheetPdfAction} sheetId={sheet.id} />
-                            ) : (
-                              <span className="text-muted-foreground text-xs">
-                                Повтор PDF недоступний
-                              </span>
-                            )}
+                        </div>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${SHEET_STATUS_STYLES[displayStatus]}`}
+                        >
+                          {SHEET_STATUS_LABELS[displayStatus]}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4 p-4 pt-4 sm:p-5 sm:pt-5">
+                      <div className="space-y-3 text-sm">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <p className="text-muted-foreground">
+                            Дата опитування:{' '}
+                            <span className="text-foreground font-medium">
+                              {DATE_FORMATTER.format(sheet.surveyDate)}
+                            </span>
+                          </p>
+                          <p className="text-muted-foreground">
+                            Підписати до:{' '}
+                            <span className="text-foreground font-medium">
+                              {DATE_FORMATTER.format(sheet.expiresAt)}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Публічне посилання</p>
+                          <SheetPublicLinkActions votePath={votePath} />
+                        </div>
+                      </div>
 
-                            {canDeleteSheet ? (
-                              <SheetDeleteForm action={deleteSheetAction} sheetId={sheet.id} />
-                            ) : (
-                              <span className="text-muted-foreground text-xs">
-                                Видалення недоступне
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Завантаження</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {sheet.pdfUploadPending ? (
+                            <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-800">
+                              PDF формується
+                            </span>
+                          ) : null}
+                          {sheet.errorPending ? (
+                            <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                              Є помилка PDF
+                            </span>
+                          ) : null}
+                          {hasPdf ? (
+                            <>
+                              <a
+                                href={`${downloadBasePath}/original`}
+                                className="border-border bg-surface hover:bg-surface-muted inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold"
+                              >
+                                <PdfFileIcon className="h-4 w-4" />
+                                Оригінал PDF
+                              </a>
+                              <a
+                                href={`${downloadBasePath}/visualization`}
+                                className="border-border bg-surface hover:bg-surface-muted inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold"
+                              >
+                                <PdfVisualIcon className="h-4 w-4" />
+                                Візуалізація PDF
+                              </a>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">PDF недоступний</span>
+                          )}
+                          {isSigned ? (
+                            <a
+                              href={`${downloadBasePath}/signed`}
+                              className="text-brand text-xs underline-offset-4 hover:underline"
+                            >
+                              Підписаний .p7s
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div>
+                          {canRetryPdf ? (
+                            <SheetRetryForm
+                              action={retrySheetPdfAction}
+                              sheetId={sheet.id}
+                              redirectTo={currentSheetsHref}
+                            />
+                          ) : null}
+                        </div>
+                        <div>
+                          {canDeleteSheet ? (
+                            <SheetDeleteForm
+                              action={deleteSheetAction}
+                              sheetId={sheet.id}
+                              redirectTo={currentSheetsHref}
+                            />
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              Видалення недоступне
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
-        </CardContent>
-      </Card>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }

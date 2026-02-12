@@ -298,7 +298,7 @@ export default async function DashboardPage() {
                       disabled: !selectedOsbb,
                     },
                     {
-                      href: '/sheets/new',
+                      href: '/sheets/new?from=dashboard',
                       label: 'Додати листок опитування',
                       icon: 'add',
                       disabled: !selectedOsbb,

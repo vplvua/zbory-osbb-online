@@ -137,7 +137,7 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
             {sheet.owner.ownershipDenominator})
           </p>
           <p>Дата опитування: {surveyDate}</p>
-          <p>Дедлайн: {expiresAtDate}</p>
+          <p>Підписати до: {expiresAtDate}</p>
         </div>
       </section>
 

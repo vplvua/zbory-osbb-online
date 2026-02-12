@@ -1,16 +1,21 @@
 'use client';
 
-import { useActionState } from 'react';
+import { type SVGProps, useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { SheetFormState } from '@/app/sheets/actions';
+import { cn } from '@/lib/utils';
 
 const initialState: SheetFormState = {};
+type SelectorKind = 'protocol' | 'owner';
 
 type SheetCreateFormProps = {
   action: (state: SheetFormState, formData: FormData) => Promise<SheetFormState>;
+  redirectTo?: string;
+  formId?: string;
+  showSubmitButton?: boolean;
   protocols: Array<{
     id: string;
     number: string;
@@ -24,75 +29,401 @@ type SheetCreateFormProps = {
   defaultSurveyDate: string;
 };
 
+function BackIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+function CloseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="m18 6-12 12" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+function CheckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="m5 13 4 4L19 7" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 export default function SheetCreateForm({
   action,
+  redirectTo,
+  formId,
+  showSubmitButton = true,
   protocols,
   owners,
   defaultSurveyDate,
 }: SheetCreateFormProps) {
   const [state, formAction] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [selectedProtocolId, setSelectedProtocolId] = useState('');
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
+  const [ownerSelectionDraft, setOwnerSelectionDraft] = useState<string[]>([]);
+  const [activeSelector, setActiveSelector] = useState<SelectorKind | null>(null);
+  const [protocolSearch, setProtocolSearch] = useState('');
+  const [ownerSearch, setOwnerSearch] = useState('');
+
+  const selectedProtocol = protocols.find((protocol) => protocol.id === selectedProtocolId) ?? null;
+  const selectedOwner =
+    selectedOwnerIds.length === 1
+      ? (owners.find((owner) => owner.id === selectedOwnerIds[0]) ?? null)
+      : null;
+
+  const filteredProtocols = useMemo(() => {
+    const normalized = protocolSearch.trim().toLowerCase();
+    if (!normalized) {
+      return protocols;
+    }
+
+    return protocols.filter((protocol) => {
+      const haystack = `${protocol.number} ${protocol.dateLabel}`.toLowerCase();
+      return haystack.includes(normalized);
+    });
+  }, [protocolSearch, protocols]);
+
+  const filteredOwners = useMemo(() => {
+    const normalized = ownerSearch.trim().toLowerCase();
+    if (!normalized) {
+      return owners;
+    }
+
+    return owners.filter((owner) => {
+      const haystack = `${owner.shortName} ${owner.apartmentNumber}`.toLowerCase();
+      return haystack.includes(normalized);
+    });
+  }, [ownerSearch, owners]);
+
+  function clearActiveSelection() {
+    if (activeSelector === 'protocol') {
+      setSelectedProtocolId('');
+      setActiveSelector(null);
+    } else if (activeSelector === 'owner') {
+      setOwnerSelectionDraft([]);
+    }
+  }
+
+  useEffect(() => {
+    if (!activeSelector) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveSelector(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activeSelector]);
+
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) {
+      return;
+    }
+
+    form.dispatchEvent(new Event('input', { bubbles: true }));
+  }, [selectedProtocolId, selectedOwnerIds]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Новий листок опитування</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="protocolId">Протокол</Label>
-            <select
-              id="protocolId"
-              name="protocolId"
-              required
-              className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
-              <option value="" disabled>
-                Оберіть протокол
-              </option>
-              {protocols.map((protocol) => (
-                <option key={protocol.id} value={protocol.id}>
-                  {protocol.number} ({protocol.dateLabel})
-                </option>
-              ))}
-            </select>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Новий листок опитування</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form id={formId} ref={formRef} action={formAction} className="space-y-4">
+            {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
+            <input type="hidden" name="protocolId" value={selectedProtocolId} />
+            {selectedOwnerIds.map((ownerId) => (
+              <input key={ownerId} type="hidden" name="ownerIds" value={ownerId} />
+            ))}
+
+            <div className="space-y-2">
+              <Label htmlFor="protocol-selector-button">Протокол</Label>
+              <button
+                id="protocol-selector-button"
+                type="button"
+                className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                onClick={() => {
+                  setProtocolSearch('');
+                  setActiveSelector('protocol');
+                }}
+              >
+                <span
+                  className={cn(
+                    'truncate',
+                    selectedProtocol ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                >
+                  {selectedProtocol
+                    ? `${selectedProtocol.number} (${selectedProtocol.dateLabel})`
+                    : 'Оберіть протокол'}
+                </span>
+                <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="owner-selector-button">Співвласники</Label>
+              <button
+                id="owner-selector-button"
+                type="button"
+                className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                onClick={() => {
+                  setOwnerSearch('');
+                  setOwnerSelectionDraft(selectedOwnerIds);
+                  setActiveSelector('owner');
+                }}
+              >
+                <span
+                  className={cn(
+                    'truncate',
+                    selectedOwnerIds.length > 0 ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                >
+                  {selectedOwner
+                    ? `кв. ${selectedOwner.apartmentNumber}, ${selectedOwner.shortName}`
+                    : selectedOwnerIds.length > 1
+                      ? `Обрано: ${selectedOwnerIds.length} співвласників`
+                      : 'Оберіть співвласників'}
+                </span>
+                <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="surveyDate">Дата проведення опитування</Label>
+              <div className="w-37.5 max-w-full">
+                <Input
+                  id="surveyDate"
+                  name="surveyDate"
+                  type="date"
+                  defaultValue={defaultSurveyDate}
+                  className="block w-full"
+                  required
+                />
+              </div>
+            </div>
+
+            {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
+
+            {showSubmitButton ? <Button type="submit">Створити листок</Button> : null}
+          </form>
+        </CardContent>
+      </Card>
+
+      {activeSelector ? (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            className="absolute inset-0 hidden bg-black/45 sm:block"
+            aria-label="Закрити вибір"
+            onClick={() => setActiveSelector(null)}
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sheet-selector-title"
+            className="bg-surface border-border relative z-10 flex h-full w-full flex-col sm:absolute sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[80vh] sm:w-full sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border"
+          >
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground inline-flex h-8 w-8 items-center justify-center rounded-md"
+                onClick={() => setActiveSelector(null)}
+                aria-label="Назад"
+              >
+                <BackIcon className="h-5 w-5" />
+              </button>
+              <h3 id="sheet-selector-title" className="text-base font-semibold">
+                {activeSelector === 'protocol' ? 'Вибір протоколу' : 'Вибір співвласників'}
+              </h3>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground inline-flex h-8 w-8 items-center justify-center rounded-md"
+                onClick={() => setActiveSelector(null)}
+                aria-label="Закрити"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-4 pt-1 pb-3">
+              <div className="relative">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+                <Input
+                  value={activeSelector === 'protocol' ? protocolSearch : ownerSearch}
+                  onChange={(event) => {
+                    if (activeSelector === 'protocol') {
+                      setProtocolSearch(event.target.value);
+                      return;
+                    }
+
+                    setOwnerSearch(event.target.value);
+                  }}
+                  placeholder={
+                    activeSelector === 'protocol'
+                      ? 'Пошук за номером або датою протоколу'
+                      : 'Пошук за ПІБ або номером квартири'
+                  }
+                  aria-label={
+                    activeSelector === 'protocol' ? 'Пошук протоколу' : 'Пошук співвласника'
+                  }
+                  className="pl-9"
+                />
+              </div>
+              <div className="mt-2 flex justify-end">
+                {activeSelector === 'owner' ? (
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-foreground h-8 px-2 text-xs"
+                      onClick={() => setOwnerSelectionDraft(owners.map((owner) => owner.id))}
+                      disabled={owners.length === 0}
+                    >
+                      Обрати всіх
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-foreground h-8 px-2 text-xs"
+                      onClick={clearActiveSelection}
+                      disabled={ownerSelectionDraft.length === 0}
+                    >
+                      Скинути вибір
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-foreground h-8 px-2 text-xs"
+                    onClick={clearActiveSelection}
+                    disabled={!selectedProtocolId}
+                  >
+                    Скинути вибір
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {activeSelector === 'protocol' ? (
+                <div className="space-y-2">
+                  {filteredProtocols.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Нічого не знайдено.</p>
+                  ) : (
+                    filteredProtocols.map((protocol) => {
+                      const isActive = protocol.id === selectedProtocolId;
+                      return (
+                        <button
+                          key={protocol.id}
+                          type="button"
+                          className={`border-border hover:bg-surface-muted flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm ${
+                            isActive ? 'border-brand bg-brand/10' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedProtocolId(protocol.id);
+                            setActiveSelector(null);
+                          }}
+                        >
+                          <span className="font-medium">
+                            {protocol.number} ({protocol.dateLabel})
+                          </span>
+                          {isActive ? <CheckIcon className="text-brand h-4 w-4" /> : null}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredOwners.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Нічого не знайдено.</p>
+                  ) : (
+                    filteredOwners.map((owner) => {
+                      const isActive = ownerSelectionDraft.includes(owner.id);
+                      return (
+                        <button
+                          key={owner.id}
+                          type="button"
+                          className={`border-border hover:bg-surface-muted flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm ${
+                            isActive ? 'border-brand bg-brand/10' : ''
+                          }`}
+                          onClick={() => {
+                            setOwnerSelectionDraft((previousSelection) =>
+                              previousSelection.includes(owner.id)
+                                ? previousSelection.filter((selectedId) => selectedId !== owner.id)
+                                : [...previousSelection, owner.id],
+                            );
+                          }}
+                        >
+                          <span className="font-medium">
+                            кв. {owner.apartmentNumber}, {owner.shortName}
+                          </span>
+                          {isActive ? <CheckIcon className="text-brand h-4 w-4" /> : null}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
+            {activeSelector === 'owner' ? (
+              <div className="border-border border-t p-4">
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedOwnerIds(ownerSelectionDraft);
+                    setActiveSelector(null);
+                  }}
+                >
+                  Підтвердити вибір
+                </Button>
+              </div>
+            ) : null}
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="ownerId">Співвласник</Label>
-            <select
-              id="ownerId"
-              name="ownerId"
-              required
-              className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
-              <option value="" disabled>
-                Оберіть співвласника
-              </option>
-              {owners.map((owner) => (
-                <option key={owner.id} value={owner.id}>
-                  {owner.shortName} (кв. {owner.apartmentNumber})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="surveyDate">Дата проведення опитування</Label>
-            <Input
-              id="surveyDate"
-              name="surveyDate"
-              type="date"
-              defaultValue={defaultSurveyDate}
-              required
-            />
-          </div>
-
-          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
-
-          <Button type="submit">Створити листок</Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      ) : null}
+    </>
   );
 }

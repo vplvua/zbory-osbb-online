@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import SheetCreateForm from '@/app/sheets/_components/sheet-create-form';
 import { createSheetAction } from '@/app/sheets/actions';
+import SheetCreateSaveButton from '@/app/sheets/new/_components/sheet-create-save-button';
+import AppHeader from '@/components/app-header';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,8 +13,13 @@ import { formatOwnerShortName } from '@/lib/owner/name';
 import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA');
+const SHEET_CREATE_FORM_ID = 'sheet-create-form';
 
-export default async function SheetNewPage() {
+type SheetNewPageProps = {
+  searchParams?: Promise<{ from?: string; fromOwnerId?: string; fromProtocolId?: string }>;
+};
+
+export default async function SheetNewPage({ searchParams }: SheetNewPageProps) {
   const session = await getSessionPayload();
   if (!session) {
     redirect('/login');
@@ -27,6 +34,44 @@ export default async function SheetNewPage() {
   if (!selectedOsbb) {
     redirect('/dashboard');
   }
+
+  const params = await searchParams;
+  const navigationSourceParam = params?.from?.trim() ?? '';
+  const navigationOwnerIdParam = params?.fromOwnerId?.trim() ?? '';
+  const navigationProtocolIdParam = params?.fromProtocolId?.trim() ?? '';
+  const navigationSource =
+    navigationSourceParam === 'dashboard' ||
+    navigationSourceParam === 'sheets' ||
+    navigationSourceParam === 'owners' ||
+    navigationSourceParam === 'protocol-edit' ||
+    navigationSourceParam === 'owner-edit'
+      ? navigationSourceParam
+      : 'sheets';
+
+  const sheetsListQuery = new URLSearchParams();
+  if (navigationSource === 'owners') {
+    sheetsListQuery.set('from', 'owners');
+  }
+  if (navigationSource === 'owner-edit') {
+    sheetsListQuery.set('from', 'owner-edit');
+    if (navigationOwnerIdParam) {
+      sheetsListQuery.set('fromOwnerId', navigationOwnerIdParam);
+    }
+  }
+  if (navigationSource === 'protocol-edit') {
+    sheetsListQuery.set('from', 'protocol-edit');
+    if (navigationProtocolIdParam) {
+      sheetsListQuery.set('fromProtocolId', navigationProtocolIdParam);
+    }
+  }
+
+  const sheetsListHref = sheetsListQuery.toString()
+    ? `/sheets?${sheetsListQuery.toString()}`
+    : '/sheets';
+  const backLink =
+    navigationSource === 'dashboard'
+      ? { href: '/dashboard', label: '← Назад на головну' }
+      : { href: sheetsListHref, label: '← Назад до листків опитування' };
 
   const [protocols, owners] = await Promise.all([
     prisma.protocol.findMany({
@@ -59,59 +104,64 @@ export default async function SheetNewPage() {
   const defaultSurveyDate = new Date().toISOString().split('T')[0];
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          <Link href="/sheets" className="text-brand underline-offset-4 hover:underline">
-            ← Назад до листків опитування
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold">Новий листок опитування</h1>
-      </div>
+    <div className="flex h-screen flex-col">
+      <AppHeader
+        title={selectedOsbb.shortName}
+        containerClassName="max-w-4xl"
+        actionNode={<SheetCreateSaveButton formId={SHEET_CREATE_FORM_ID} />}
+        backLink={backLink}
+      />
 
-      {protocols.length === 0 || owners.length === 0 ? (
-        <Card>
-          <CardContent className="space-y-4 py-6">
-            <p className="text-muted-foreground text-sm">
-              Для створення листка потрібні хоча б один протокол і один співвласник у вибраному
-              ОСББ.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {protocols.length === 0 ? (
-                <Link href="/protocols/new">
-                  <Button type="button">
-                    <AddIcon className="h-4 w-4" />
-                    Додати протокол
-                  </Button>
-                </Link>
-              ) : null}
-              {owners.length === 0 ? (
-                <Link href="/owners/new">
-                  <Button type="button" variant="outline">
-                    <AddIcon className="h-4 w-4" />
-                    Додати співвласника
-                  </Button>
-                </Link>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <SheetCreateForm
-          action={createSheetAction}
-          protocols={protocols.map((protocol) => ({
-            id: protocol.id,
-            number: protocol.number,
-            dateLabel: DATE_FORMATTER.format(protocol.date),
-          }))}
-          owners={owners.map((owner) => ({
-            id: owner.id,
-            shortName: formatOwnerShortName(owner),
-            apartmentNumber: owner.apartmentNumber,
-          }))}
-          defaultSurveyDate={defaultSurveyDate}
-        />
-      )}
-    </main>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8">
+          {protocols.length === 0 || owners.length === 0 ? (
+            <Card>
+              <CardContent className="space-y-4 py-6">
+                <p className="text-muted-foreground text-sm">
+                  Для створення листка потрібні хоча б один протокол і один співвласник у вибраному
+                  ОСББ.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {protocols.length === 0 ? (
+                    <Link href="/protocols/new">
+                      <Button type="button">
+                        <AddIcon className="h-4 w-4" />
+                        Додати протокол
+                      </Button>
+                    </Link>
+                  ) : null}
+                  {owners.length === 0 ? (
+                    <Link href="/owners/new">
+                      <Button type="button" variant="outline">
+                        <AddIcon className="h-4 w-4" />
+                        Додати співвласника
+                      </Button>
+                    </Link>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <SheetCreateForm
+              action={createSheetAction}
+              formId={SHEET_CREATE_FORM_ID}
+              showSubmitButton={false}
+              redirectTo={sheetsListHref}
+              protocols={protocols.map((protocol) => ({
+                id: protocol.id,
+                number: protocol.number,
+                dateLabel: DATE_FORMATTER.format(protocol.date),
+              }))}
+              owners={owners.map((owner) => ({
+                id: owner.id,
+                shortName: formatOwnerShortName(owner),
+                apartmentNumber: owner.apartmentNumber,
+              }))}
+              defaultSurveyDate={defaultSurveyDate}
+            />
+          )}
+        </div>
+      </main>
+    </div>
   );
 }

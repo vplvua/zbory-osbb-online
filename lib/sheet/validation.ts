@@ -14,4 +14,17 @@ export const sheetCreateSchema = z.object({
     }),
 });
 
+export const sheetBulkCreateSchema = z.object({
+  protocolId: z.string().trim().min(1),
+  ownerIds: z.array(z.string().trim().min(1)).min(1),
+  surveyDate: z
+    .string()
+    .trim()
+    .regex(DATE_ONLY_PATTERN)
+    .refine((value) => !Number.isNaN(Date.parse(value)), {
+      message: 'Невірна дата',
+    }),
+});
+
 export type SheetCreateInput = z.infer<typeof sheetCreateSchema>;
+export type SheetBulkCreateInput = z.infer<typeof sheetBulkCreateSchema>;

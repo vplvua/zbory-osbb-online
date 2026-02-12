@@ -46,12 +46,40 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
     orderBy: { createdAt: 'desc' },
     include: {
       _count: { select: { questions: true, sheets: true } },
-      sheets: {
-        where: { status: SheetStatus.SIGNED },
-        select: { id: true },
-      },
     },
   });
+  const protocolIds = protocols.map((protocol) => protocol.id);
+  const [signedSheets, protocolsWithSignatures] = await Promise.all([
+    prisma.sheet.findMany({
+      where: {
+        protocolId: { in: protocolIds },
+        status: SheetStatus.SIGNED,
+      },
+      select: { protocolId: true },
+    }),
+    prisma.sheet.findMany({
+      where: {
+        protocolId: { in: protocolIds },
+        OR: [
+          { status: SheetStatus.SIGNED },
+          { ownerSignedAt: { not: null } },
+          { organizerSignedAt: { not: null } },
+        ],
+      },
+      select: { protocolId: true },
+      distinct: ['protocolId'],
+    }),
+  ]);
+
+  const signedSheetsCountByProtocol = new Map<string, number>();
+  for (const sheet of signedSheets) {
+    signedSheetsCountByProtocol.set(
+      sheet.protocolId,
+      (signedSheetsCountByProtocol.get(sheet.protocolId) ?? 0) + 1,
+    );
+  }
+
+  const lockedProtocolIds = new Set(protocolsWithSignatures.map((sheet) => sheet.protocolId));
 
   return (
     <div className="flex h-screen flex-col">
@@ -106,7 +134,7 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
                       <p className="text-muted-foreground">
                         Підписаних листків:{' '}
                         <span className="text-foreground font-medium">
-                          {protocol.sheets.length}
+                          {signedSheetsCountByProtocol.get(protocol.id) ?? 0}
                         </span>
                       </p>
                     </div>
@@ -125,7 +153,7 @@ export default async function ProtocolsPage({ params }: { params: Promise<{ osbb
                         buttonContent="Видалити"
                         showTrashIcon
                         hasSheets={protocol._count.sheets > 0}
-                        hasSignedSheets={protocol.sheets.length > 0}
+                        hasSignedSheets={lockedProtocolIds.has(protocol.id)}
                       />
                     </div>
                   </CardContent>

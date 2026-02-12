@@ -55,13 +55,16 @@ export default function ProtocolForm({
 
           <div className="space-y-2">
             <Label htmlFor="date">Дата зборів</Label>
-            <Input
-              id="date"
-              name="date"
-              type="date"
-              defaultValue={defaultValues?.date ?? ''}
-              required
-            />
+            <div className="w-37.5 max-w-full">
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                defaultValue={defaultValues?.date ?? ''}
+                className="block w-full"
+                required
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

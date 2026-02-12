@@ -141,15 +141,15 @@ export default async function OwnerEditPage({ params }: OwnerEditPageProps) {
           <section className="border-border rounded-lg border p-6">
             <h2 className="text-lg font-semibold">Листки опитування</h2>
             <p className="text-muted-foreground mt-2 text-sm">
-              Створено листків опитування:{' '}
-              <span className="text-foreground font-medium">{createdSheetsCount}</span>
+              Створено: <span className="text-foreground font-medium">{createdSheetsCount}</span>
             </p>
             <p className="text-muted-foreground mt-1 text-sm">
-              Підписано листків опитування:{' '}
-              <span className="text-foreground font-medium">{signedSheetsCount}</span>
+              Підписано: <span className="text-foreground font-medium">{signedSheetsCount}</span>
             </p>
             <div className="mt-4">
-              <Link href={`/sheets?ownerId=${encodeURIComponent(owner.id)}`}>
+              <Link
+                href={`/sheets?ownerId=${encodeURIComponent(owner.id)}&from=owner-edit&fromOwnerId=${encodeURIComponent(owner.id)}`}
+              >
                 <Button
                   type="button"
                   variant="outline"

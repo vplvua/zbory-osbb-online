@@ -1,7 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { Prisma } from '@prisma/client';
+import { Prisma, SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { isValidPhone } from '@/lib/auth/validation';
@@ -57,6 +57,25 @@ async function hasAnySheetForApartment(osbbId: string, apartmentNumber: string) 
         osbbId,
         apartmentNumber,
       },
+    },
+    select: { id: true },
+  });
+
+  return Boolean(sheet);
+}
+
+async function hasAnySignedSheetForApartment(osbbId: string, apartmentNumber: string) {
+  const sheet = await prisma.sheet.findFirst({
+    where: {
+      owner: {
+        osbbId,
+        apartmentNumber,
+      },
+      OR: [
+        { status: SheetStatus.SIGNED },
+        { ownerSignedAt: { not: null } },
+        { organizerSignedAt: { not: null } },
+      ],
     },
     select: { id: true },
   });
@@ -235,11 +254,17 @@ export async function deleteOwnerAction(
         isDeleted: false,
       },
     },
-    select: { id: true },
+    select: { id: true, apartmentNumber: true },
   });
 
   if (!owner) {
     return { error: 'Співвласника не знайдено.' };
+  }
+
+  if (await hasAnySignedSheetForApartment(selectedOsbb.id, owner.apartmentNumber)) {
+    return {
+      error: 'Неможливо видалити співвласника: для цієї квартири вже є підписані листки.',
+    };
   }
 
   if (await hasAnySheet(owner.id)) {

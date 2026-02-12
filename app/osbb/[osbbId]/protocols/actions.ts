@@ -127,7 +127,14 @@ async function ensureOsbbOwner(osbbId: string, userId: string) {
 
 async function hasSignedSheets(protocolId: string) {
   const signed = await prisma.sheet.findFirst({
-    where: { protocolId, status: SheetStatus.SIGNED },
+    where: {
+      protocolId,
+      OR: [
+        { status: SheetStatus.SIGNED },
+        { ownerSignedAt: { not: null } },
+        { organizerSignedAt: { not: null } },
+      ],
+    },
     select: { id: true },
   });
 
