@@ -431,6 +431,96 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project is deployed as a standard Next.js app on Vercel.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Vercel deployment checklist (MVP)
+
+1. Open your Vercel project -> `Settings` -> `Environment Variables`.
+2. Add required variables (table below).
+3. Connect a Postgres database in Vercel (`Storage` / `Marketplace`).
+4. Set Build Command to run Prisma migrations in production.
+5. Redeploy and verify logs.
+
+### Environment variables (Vercel)
+
+Set these in `Project -> Settings -> Environment Variables`.
+
+| Variable                 | Required               | Recommended scope                              | Notes                                                                                                     |
+| ------------------------ | ---------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Yes                    | Production + Preview                           | Main runtime DB URL used by Prisma client.                                                                |
+| `POSTGRES_URL`           | Yes (for migrations)   | Production + Preview                           | Direct DB URL for Prisma migrations (`directUrl`).                                                        |
+| `NEXTAUTH_SECRET`        | Yes                    | Production (+ Preview if auth is tested there) | Required in production; use a long random secret. Mark as Sensitive.                                      |
+| `NEXTAUTH_URL`           | Yes                    | Production                                     | Public app URL, for example `https://zbory-osbb-online.vercel.app`.                                       |
+| `ENCRYPTION_KEY`         | Yes                    | Production + Preview                           | App-level encryption key (32+ chars).                                                                     |
+| `DUBIDOC_API_KEY`        | Optional               | Production + Preview                           | Required only for real Dubidoc mode. Keep empty/placeholder for mock mode.                                |
+| `DUBIDOC_ORG_ID`         | Optional               | Production + Preview                           | Required only for real Dubidoc mode.                                                                      |
+| `DUBIDOC_CALLBACK_URL`   | Optional               | Production + Preview                           | If empty, app falls back to `${NEXTAUTH_URL}/api/webhooks/dubidoc`.                                       |
+| `DUBIDOC_WEBHOOK_SECRET` | Optional (recommended) | Production + Preview                           | If set, Dubidoc must send `x-dubidoc-webhook-secret`.                                                     |
+| `TURBOSMS_API_KEY`       | Optional               | Production + Preview                           | Real TurboSMS adapter is not implemented yet; keep empty/placeholder (`replace-with-*`) to use mock mode. |
+| `TURBOSMS_SENDER`        | Optional               | Production + Preview                           | Sender name for TurboSMS when real mode is implemented.                                                   |
+| `OPENAI_API_KEY`         | Optional               | Production + Preview                           | Stage 2 only.                                                                                             |
+| `CRON_SECRET`            | Optional (recommended) | Production + Preview                           | Protects `/api/cron/deferred-queue` endpoint.                                                             |
+
+Notes:
+
+- For preview deployments, avoid using production-only URLs in `NEXTAUTH_URL`.
+- If a secret value was exposed in screenshots/chat, rotate it immediately.
+
+### Database on Vercel
+
+Use Vercel Postgres via Vercel Storage/Marketplace (for this repo, Prisma Postgres is expected).
+
+After DB connection, Vercel usually provides DB variables automatically (`DATABASE_URL`, `POSTGRES_URL`, and provider-specific URLs like `PRISMA_DATABASE_URL`).
+
+Prisma datasource should use:
+
+```prisma
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("POSTGRES_URL")
+}
+```
+
+### Build command and Prisma migrations
+
+Use this Build Command in Vercel:
+
+```bash
+pnpm exec prisma generate && pnpm exec prisma migrate deploy && pnpm build
+```
+
+Use this Install Command:
+
+```bash
+pnpm install
+```
+
+Do not use `prisma migrate dev` in production.
+
+### Dubidoc webhook setup (HTTPS required)
+
+Set Dubidoc callback URL to:
+
+```text
+https://<your-domain>/api/webhooks/dubidoc
+```
+
+Requirements:
+
+- HTTPS only (no plain HTTP in production).
+- URL must be publicly reachable from Dubidoc.
+- If `DUBIDOC_WEBHOOK_SECRET` is set, Dubidoc should send `x-dubidoc-webhook-secret` with matching value.
+
+Dev-only webhook simulator route:
+
+- `POST /api/dev/dubidoc/mock-webhook`
+- blocked in production (returns `404`)
+
+### Post-deploy verification
+
+Check latest deployment logs:
+
+- `prisma migrate deploy` ran successfully.
+- `All migrations have been successfully applied.`
+- `next build` completed successfully.
