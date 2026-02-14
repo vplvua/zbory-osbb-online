@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { SheetFormState } from '@/app/sheets/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 import { cn } from '@/lib/utils';
 
 const initialState: SheetFormState = {};
@@ -87,7 +89,8 @@ export default function SheetCreateForm({
   owners,
   defaultSurveyDate,
 }: SheetCreateFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
   const formRef = useRef<HTMLFormElement | null>(null);
   const [selectedProtocolId, setSelectedProtocolId] = useState('');
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
@@ -172,88 +175,103 @@ export default function SheetCreateForm({
           <CardTitle>Новий листок опитування</CardTitle>
         </CardHeader>
         <CardContent>
-          <form id={formId} ref={formRef} action={formAction} className="space-y-4">
-            {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
-            <input type="hidden" name="protocolId" value={selectedProtocolId} />
-            {selectedOwnerIds.map((ownerId) => (
-              <input key={ownerId} type="hidden" name="ownerIds" value={ownerId} />
-            ))}
+          <form
+            id={formId}
+            ref={formRef}
+            action={formAction}
+            className="space-y-4"
+            data-submitting={isPending ? 'true' : 'false'}
+          >
+            <fieldset disabled={isPending} className="space-y-4">
+              {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
+              <input type="hidden" name="protocolId" value={selectedProtocolId} />
+              {selectedOwnerIds.map((ownerId) => (
+                <input key={ownerId} type="hidden" name="ownerIds" value={ownerId} />
+              ))}
 
-            <div className="space-y-2">
-              <Label htmlFor="protocol-selector-button">Протокол</Label>
-              <button
-                id="protocol-selector-button"
-                type="button"
-                className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                onClick={() => {
-                  setProtocolSearch('');
-                  setActiveSelector('protocol');
-                }}
-              >
-                <span
-                  className={cn(
-                    'truncate',
-                    selectedProtocol ? 'text-foreground' : 'text-muted-foreground',
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor="protocol-selector-button">Протокол</Label>
+                <button
+                  id="protocol-selector-button"
+                  type="button"
+                  className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  onClick={() => {
+                    setProtocolSearch('');
+                    setActiveSelector('protocol');
+                  }}
+                  disabled={isPending}
                 >
-                  {selectedProtocol
-                    ? formatProtocolLabel(selectedProtocol.number, selectedProtocol.dateLabel)
-                    : 'Оберіть протокол'}
-                </span>
-                <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="owner-selector-button">Співвласники</Label>
-              <button
-                id="owner-selector-button"
-                type="button"
-                className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                onClick={() => {
-                  setOwnerSearch('');
-                  setOwnerSelectionDraft(selectedOwnerIds);
-                  setActiveSelector('owner');
-                }}
-              >
-                <span
-                  className={cn(
-                    'truncate',
-                    selectedOwnerIds.length > 0 ? 'text-foreground' : 'text-muted-foreground',
-                  )}
-                >
-                  {selectedOwner
-                    ? `кв. ${selectedOwner.apartmentNumber}, ${selectedOwner.shortName}`
-                    : selectedOwnerIds.length > 1
-                      ? `Обрано: ${selectedOwnerIds.length} співвласників`
-                      : 'Оберіть співвласників'}
-                </span>
-                <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="surveyDate">Дата проведення опитування</Label>
-              <div className="w-37.5 max-w-full">
-                <Input
-                  id="surveyDate"
-                  name="surveyDate"
-                  type="date"
-                  defaultValue={defaultSurveyDate}
-                  className="block w-full"
-                  required
-                />
+                  <span
+                    className={cn(
+                      'truncate',
+                      selectedProtocol ? 'text-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {selectedProtocol
+                      ? formatProtocolLabel(selectedProtocol.number, selectedProtocol.dateLabel)
+                      : 'Оберіть протокол'}
+                  </span>
+                  <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+                </button>
               </div>
-            </div>
 
-            {state.error ? (
-              <section className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-                <AlertTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" />
-                <p className="text-sm font-medium">{state.error}</p>
-              </section>
-            ) : null}
+              <div className="space-y-2">
+                <Label htmlFor="owner-selector-button">Співвласники</Label>
+                <button
+                  id="owner-selector-button"
+                  type="button"
+                  className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  onClick={() => {
+                    setOwnerSearch('');
+                    setOwnerSelectionDraft(selectedOwnerIds);
+                    setActiveSelector('owner');
+                  }}
+                  disabled={isPending}
+                >
+                  <span
+                    className={cn(
+                      'truncate',
+                      selectedOwnerIds.length > 0 ? 'text-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {selectedOwner
+                      ? `кв. ${selectedOwner.apartmentNumber}, ${selectedOwner.shortName}`
+                      : selectedOwnerIds.length > 1
+                        ? `Обрано: ${selectedOwnerIds.length} співвласників`
+                        : 'Оберіть співвласників'}
+                  </span>
+                  <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+                </button>
+              </div>
 
-            {showSubmitButton ? <Button type="submit">Створити листок</Button> : null}
+              <div className="space-y-2">
+                <Label htmlFor="surveyDate">Дата проведення опитування</Label>
+                <div className="w-37.5 max-w-full">
+                  <Input
+                    id="surveyDate"
+                    name="surveyDate"
+                    type="date"
+                    defaultValue={defaultSurveyDate}
+                    className="block w-full"
+                    required
+                  />
+                </div>
+              </div>
+
+              {state.error ? (
+                <section className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+                  <AlertTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" />
+                  <p className="text-sm font-medium">{state.error}</p>
+                </section>
+              ) : null}
+
+              {showSubmitButton ? (
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+                  {isPending ? 'Створення...' : 'Створити листок'}
+                </Button>
+              ) : null}
+            </fieldset>
           </form>
         </CardContent>
       </Card>

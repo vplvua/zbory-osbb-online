@@ -1,6 +1,7 @@
 import { SheetStatus } from '@prisma/client';
 import { notFound } from 'next/navigation';
 import { ErrorAlert } from '@/components/ui/error-alert';
+import VoteDownloadActions from '@/components/vote/vote-download-actions';
 import VoteDraftSection from '@/components/vote/vote-draft-section';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
 
@@ -61,34 +62,7 @@ function renderStatusBlock(
             кабінеті ОСББ.
           </ErrorAlert>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          {options.hasPdfFile ? (
-            <a
-              href={`${baseDownloadPath}/original`}
-              className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
-            >
-              Завантажити оригінальний PDF
-            </a>
-          ) : (
-            <span className="text-muted-foreground inline-flex h-10 items-center text-sm">
-              Оригінальний PDF ще недоступний
-            </span>
-          )}
-          {options.hasPdfFile ? (
-            <a
-              href={`${baseDownloadPath}/visualization`}
-              className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
-            >
-              Завантажити PDF візуалізації
-            </a>
-          ) : null}
-          <a
-            href={`${baseDownloadPath}/signed`}
-            className="border-border bg-surface hover:bg-surface-muted inline-flex h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold"
-          >
-            Завантажити підписаний .p7s
-          </a>
-        </div>
+        <VoteDownloadActions baseDownloadPath={baseDownloadPath} hasPdfFile={options.hasPdfFile} />
       </section>
     );
   }
@@ -144,6 +118,7 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
 
       {sheet.effectiveStatus === SheetStatus.DRAFT ? (
         <VoteDraftSection
+          token={token}
           createdAt={sheet.createdAt}
           expiresAt={sheet.expiresAt}
           questions={sheet.questions}

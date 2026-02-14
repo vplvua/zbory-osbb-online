@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { toast } from '@/lib/toast/client';
 
 type AppError = Error & {
   digest?: string;
@@ -20,6 +21,7 @@ function isDatabaseUnavailableError(error: AppError): boolean {
 export default function RootError({ error, reset }: { error: AppError; reset: () => void }) {
   useEffect(() => {
     console.error(error);
+    toast.error('Сталася неочікувана помилка. Спробуйте ще раз.');
   }, [error]);
 
   const handleRetry = () => {

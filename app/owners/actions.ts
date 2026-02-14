@@ -1,12 +1,12 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { Prisma, SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { isValidPhone } from '@/lib/auth/validation';
 import { ownerSchema } from '@/lib/owner/validation';
 import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
+import { redirectWithToast } from '@/lib/toast/server';
 
 export type OwnerFormState = {
   error?: string;
@@ -136,7 +136,10 @@ export async function createOwnerAction(
     },
   });
 
-  redirect('/owners');
+  return redirectWithToast('/owners', {
+    type: 'success',
+    message: 'Співвласника успішно додано.',
+  });
 }
 
 export async function updateOwnerAction(
@@ -223,7 +226,10 @@ export async function updateOwnerAction(
     },
   });
 
-  redirect('/owners');
+  return redirectWithToast('/owners', {
+    type: 'success',
+    message: 'Дані співвласника успішно оновлено.',
+  });
 }
 
 export async function deleteOwnerAction(
@@ -275,5 +281,8 @@ export async function deleteOwnerAction(
     where: { id: owner.id },
   });
 
-  redirect('/owners');
+  return redirectWithToast('/owners', {
+    type: 'success',
+    message: 'Співвласника успішно видалено.',
+  });
 }

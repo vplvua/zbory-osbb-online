@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type OwnerEditSaveButtonProps = {
   formId: string;
@@ -21,7 +23,8 @@ export default function OwnerEditSaveButton({
   isLocked = false,
 }: OwnerEditSaveButtonProps) {
   const [canSubmit, setCanSubmit] = useState(false);
-  const isDisabled = isLocked || !canSubmit;
+  const isPending = useExternalFormPending(formId);
+  const isDisabled = isLocked || !canSubmit || isPending;
 
   useEffect(() => {
     if (isLocked) {
@@ -53,7 +56,8 @@ export default function OwnerEditSaveButton({
 
   return (
     <Button type="submit" form={formId} disabled={isDisabled}>
-      Зберегти
+      {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+      {isPending ? 'Збереження...' : 'Зберегти'}
     </Button>
   );
 }

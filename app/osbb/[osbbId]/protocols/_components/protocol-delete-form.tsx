@@ -5,7 +5,9 @@ import { useActionState, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { ErrorAlert } from '@/components/ui/error-alert';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: ProtocolFormState = {};
 
@@ -48,7 +50,8 @@ export default function DeleteProtocolForm({
   hasSheets = false,
   hasSignedSheets = false,
 }: ProtocolDeleteFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
   const [isOpen, setIsOpen] = useState(false);
   const submitterRef = useRef<HTMLButtonElement>(null);
 
@@ -65,13 +68,19 @@ export default function DeleteProtocolForm({
   };
 
   const handleButtonClick = (event: MouseEvent<HTMLButtonElement>) => {
+    if (isPending) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
     setIsOpen(true);
   };
 
   const handleConfirm = () => {
-    if (isDeletionBlocked) {
+    if (isDeletionBlocked || isPending) {
       setIsOpen(false);
       return;
     }
@@ -87,7 +96,11 @@ export default function DeleteProtocolForm({
 
   return (
     <>
-      <form action={formAction} className={className ?? 'space-y-2'}>
+      <form
+        action={formAction}
+        className={className ?? 'space-y-2'}
+        data-submitting={isPending ? 'true' : 'false'}
+      >
         <input type="hidden" name="protocolId" value={protocolId} />
         {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
         <Button
@@ -96,9 +109,14 @@ export default function DeleteProtocolForm({
           variant={buttonVariant}
           className={buttonClassName}
           onClick={handleButtonClick}
+          disabled={isPending}
         >
-          {showTrashIcon ? <TrashIcon className="h-4 w-4" /> : null}
-          {buttonContent}
+          {isPending ? (
+            <LoadingSpinner className="h-4 w-4" />
+          ) : showTrashIcon ? (
+            <TrashIcon className="h-4 w-4" />
+          ) : null}
+          {isPending ? 'Видалення...' : buttonContent}
         </Button>
       </form>
       <ConfirmModal
@@ -108,6 +126,8 @@ export default function DeleteProtocolForm({
         confirmLabel={isDeletionBlocked ? 'Закрити' : 'Видалити'}
         confirmVariant={isDeletionBlocked ? 'outline' : 'destructive'}
         showCancel={!isDeletionBlocked}
+        confirmDisabled={isPending}
+        cancelDisabled={isPending}
         onClose={handleClose}
         onConfirm={handleConfirm}
       />

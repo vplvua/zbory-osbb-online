@@ -64,7 +64,7 @@ export default function AppHeader({
       <div className={cn('mx-auto w-full px-6 py-4', containerClassName)}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <Image src="/moeosbb.svg" alt="Логотип МОЄ ОСББ" width={40} height={40} priority />
+            <Image src="/moeosbb.svg" alt="Логотип МОЄ ОСББ" width={40} height={40} />
             <p className="truncate text-xl font-semibold" title={title}>
               {title}
             </p>

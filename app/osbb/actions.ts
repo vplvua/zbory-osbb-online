@@ -1,10 +1,10 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { osbbSchema } from '@/lib/osbb/validation';
 import { resolveSelectedOsbb, setSelectedOsbbForUser } from '@/lib/osbb/selected-osbb';
+import { redirectWithToast } from '@/lib/toast/server';
 
 export type OsbbFormState = {
   error?: string;
@@ -50,7 +50,10 @@ export async function createOsbbAction(_: OsbbFormState, formData: FormData) {
   });
 
   await setSelectedOsbbForUser(session.sub, osbb.id);
-  redirect('/dashboard');
+  return redirectWithToast('/dashboard', {
+    type: 'success',
+    message: 'ОСББ успішно створено.',
+  });
 }
 
 export async function updateOsbbAction(
@@ -100,7 +103,10 @@ export async function updateOsbbAction(
     },
   });
 
-  redirect('/dashboard');
+  return redirectWithToast('/dashboard', {
+    type: 'success',
+    message: 'Дані ОСББ успішно оновлено.',
+  });
 }
 
 export async function deleteOsbbAction(
@@ -146,5 +152,8 @@ export async function deleteOsbbAction(
   });
 
   await resolveSelectedOsbb(session.sub);
-  redirect('/dashboard');
+  return redirectWithToast('/dashboard', {
+    type: 'success',
+    message: 'ОСББ успішно видалено.',
+  });
 }

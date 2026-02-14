@@ -3,7 +3,9 @@
 import { useActionState } from 'react';
 import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import { ErrorAlert } from '@/components/ui/error-alert';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { OsbbFormState } from '@/app/osbb/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OsbbFormState = {};
 
@@ -13,18 +15,22 @@ type OsbbDeleteFormProps = {
 };
 
 export default function OsbbDeleteForm({ action, id }: OsbbDeleteFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
-    <form action={formAction} className="space-y-2">
+    <form action={formAction} className="space-y-2" data-submitting={isPending ? 'true' : 'false'}>
       <input type="hidden" name="id" value={id} />
       {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
       <ConfirmSubmitButton
         type="submit"
         variant="destructive"
         confirmMessage="Ви впевнені, що хочете видалити це ОСББ?"
+        pendingLabel="Видалення..."
+        disabled={isPending}
       >
-        Видалити ОСББ
+        {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+        {isPending ? 'Видалення...' : 'Видалити ОСББ'}
       </ConfirmSubmitButton>
     </form>
   );

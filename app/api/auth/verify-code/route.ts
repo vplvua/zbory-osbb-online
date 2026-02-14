@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { apiErrorResponse } from '@/lib/api/error-response';
 import { hashOtpCode, OTP_MAX_ATTEMPTS } from '@/lib/auth/otp';
 import { getAuthSecret } from '@/lib/auth/secret';
 import { createSessionToken, setSessionCookie } from '@/lib/auth/session';
@@ -11,93 +12,130 @@ const INVALID_CODE_MESSAGE = 'Невірний код. Залишилось сп
 const EXPIRED_CODE_MESSAGE = 'Код більше не дійсний. Запросіть новий код.';
 
 export async function POST(request: Request) {
-  let payload: { phone?: string; code?: string };
-
   try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, message: 'Невірні дані.' }, { status: 400 });
-  }
+    let payload: { phone?: string; code?: string };
 
-  const phone = normalizePhone(payload.phone ?? '');
-  const code = (payload.code ?? '').trim();
+    try {
+      payload = await request.json();
+    } catch {
+      return apiErrorResponse({
+        status: 400,
+        code: 'AUTH_VERIFY_INVALID_JSON',
+        message: 'Невірні дані.',
+      });
+    }
 
-  if (!isValidPhone(phone) || !isValidCode(code)) {
-    return NextResponse.json({ ok: false, message: 'Невірні дані.' }, { status: 400 });
-  }
+    const phone = normalizePhone(payload.phone ?? '');
+    const code = (payload.code ?? '').trim();
 
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    request.headers.get('x-real-ip') ??
-    undefined;
+    if (!isValidPhone(phone) || !isValidCode(code)) {
+      return apiErrorResponse({
+        status: 400,
+        code: 'AUTH_VERIFY_INVALID_INPUT',
+        message: 'Невірні дані.',
+      });
+    }
 
-  const rateLimit = await checkOtpRateLimit({
-    prisma,
-    phone,
-    ip,
-    action: SmsRateLimitAction.VERIFY_CODE,
-  });
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      request.headers.get('x-real-ip') ??
+      undefined;
 
-  if (!rateLimit.allowed) {
-    const retryMinutes = Math.max(
-      1,
-      Math.ceil((rateLimit.retryAfterSeconds ?? OTP_RATE_LIMIT.windowMs / 1000) / 60),
-    );
-    return NextResponse.json(
-      { ok: false, message: `Забагато спроб. Спробуйте через ${retryMinutes} хв.` },
-      { status: 429 },
-    );
-  }
-
-  const otp = await prisma.smsOtp.findFirst({
-    where: {
+    const rateLimit = await checkOtpRateLimit({
+      prisma,
       phone,
-      usedAt: null,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  if (!otp) {
-    return NextResponse.json({ ok: false, message: EXPIRED_CODE_MESSAGE }, { status: 400 });
-  }
-
-  if (otp.expiresAt < new Date()) {
-    return NextResponse.json({ ok: false, message: EXPIRED_CODE_MESSAGE }, { status: 400 });
-  }
-
-  if (otp.attempts >= OTP_MAX_ATTEMPTS) {
-    return NextResponse.json({ ok: false, message: EXPIRED_CODE_MESSAGE }, { status: 400 });
-  }
-
-  const expectedHash = hashOtpCode(phone, code, getAuthSecret());
-  if (expectedHash !== otp.codeHash) {
-    const attempts = otp.attempts + 1;
-    await prisma.smsOtp.update({
-      where: { id: otp.id },
-      data: { attempts },
+      ip,
+      action: SmsRateLimitAction.VERIFY_CODE,
     });
 
-    const remaining = Math.max(0, OTP_MAX_ATTEMPTS - attempts);
-    const message = remaining === 0 ? EXPIRED_CODE_MESSAGE : `${INVALID_CODE_MESSAGE}${remaining}`;
+    if (!rateLimit.allowed) {
+      const retryAfterSeconds = rateLimit.retryAfterSeconds ?? OTP_RATE_LIMIT.windowMs / 1000;
+      const retryMinutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+      return apiErrorResponse({
+        status: 429,
+        code: 'AUTH_VERIFY_RATE_LIMIT',
+        message: `Забагато спроб. Спробуйте через ${retryMinutes} хв.`,
+        details: { retryMinutes, retryAfterSeconds },
+      });
+    }
 
-    return NextResponse.json({ ok: false, message }, { status: 400 });
+    const otp = await prisma.smsOtp.findFirst({
+      where: {
+        phone,
+        usedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!otp) {
+      return apiErrorResponse({
+        status: 400,
+        code: 'AUTH_VERIFY_CODE_EXPIRED',
+        message: EXPIRED_CODE_MESSAGE,
+      });
+    }
+
+    if (otp.expiresAt < new Date()) {
+      return apiErrorResponse({
+        status: 400,
+        code: 'AUTH_VERIFY_CODE_EXPIRED',
+        message: EXPIRED_CODE_MESSAGE,
+      });
+    }
+
+    if (otp.attempts >= OTP_MAX_ATTEMPTS) {
+      return apiErrorResponse({
+        status: 400,
+        code: 'AUTH_VERIFY_CODE_EXPIRED',
+        message: EXPIRED_CODE_MESSAGE,
+      });
+    }
+
+    const expectedHash = hashOtpCode(phone, code, getAuthSecret());
+    if (expectedHash !== otp.codeHash) {
+      const attempts = otp.attempts + 1;
+      await prisma.smsOtp.update({
+        where: { id: otp.id },
+        data: { attempts },
+      });
+
+      const remainingAttempts = Math.max(0, OTP_MAX_ATTEMPTS - attempts);
+      const message =
+        remainingAttempts === 0
+          ? EXPIRED_CODE_MESSAGE
+          : `${INVALID_CODE_MESSAGE}${remainingAttempts}`;
+
+      return apiErrorResponse({
+        status: 400,
+        code: remainingAttempts === 0 ? 'AUTH_VERIFY_CODE_EXPIRED' : 'AUTH_VERIFY_CODE_INVALID',
+        message,
+        details: { remainingAttempts },
+      });
+    }
+
+    await prisma.smsOtp.update({
+      where: { id: otp.id },
+      data: { usedAt: new Date() },
+    });
+
+    const user = await prisma.user.upsert({
+      where: { phone },
+      update: {},
+      create: { phone },
+    });
+
+    const token = createSessionToken(user.id, user.phone);
+    await setSessionCookie(token);
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('[auth:verify-code] failed', { error });
+    return apiErrorResponse({
+      status: 500,
+      code: 'AUTH_VERIFY_FAILED',
+      message: 'Не вдалося підтвердити код. Спробуйте пізніше.',
+    });
   }
-
-  await prisma.smsOtp.update({
-    where: { id: otp.id },
-    data: { usedAt: new Date() },
-  });
-
-  const user = await prisma.user.upsert({
-    where: { phone },
-    update: {},
-    create: { phone },
-  });
-
-  const token = createSessionToken(user.id, user.phone);
-  await setSessionCookie(token);
-
-  return NextResponse.json({ ok: true });
 }

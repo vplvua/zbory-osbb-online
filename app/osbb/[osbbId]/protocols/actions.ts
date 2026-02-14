@@ -1,11 +1,11 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
 import { protocolSchema } from '@/lib/protocol/validation';
 import { questionSchema } from '@/lib/question/validation';
 import { SheetStatus } from '@prisma/client';
+import { redirectWithToast } from '@/lib/toast/server';
 
 export type ProtocolFormState = {
   error?: string;
@@ -174,7 +174,10 @@ export async function createProtocolAction(
     },
   });
 
-  redirect(`/osbb/${osbbId}/protocols/${protocol.id}/edit`);
+  return redirectWithToast(`/osbb/${osbbId}/protocols/${protocol.id}/edit`, {
+    type: 'success',
+    message: 'Протокол успішно створено.',
+  });
 }
 
 export async function updateProtocolAction(
@@ -291,7 +294,10 @@ export async function updateProtocolAction(
     }
   });
 
-  redirect(`/osbb/${protocol.osbbId}/protocols/${protocol.id}/edit`);
+  return redirectWithToast(`/osbb/${protocol.osbbId}/protocols/${protocol.id}/edit`, {
+    type: 'success',
+    message: 'Протокол успішно оновлено.',
+  });
 }
 
 export async function deleteProtocolAction(
@@ -319,7 +325,10 @@ export async function deleteProtocolAction(
 
   await prisma.protocol.delete({ where: { id: protocol.id } });
 
-  redirect(`/osbb/${protocol.osbbId}/protocols`);
+  return redirectWithToast(`/osbb/${protocol.osbbId}/protocols`, {
+    type: 'success',
+    message: 'Протокол успішно видалено.',
+  });
 }
 
 export async function addQuestionAction(
@@ -360,7 +369,10 @@ export async function addQuestionAction(
     },
   });
 
-  redirect(`/osbb/${protocol.osbbId}/protocols/${protocol.id}/edit`);
+  return redirectWithToast(`/osbb/${protocol.osbbId}/protocols/${protocol.id}/edit`, {
+    type: 'success',
+    message: 'Питання успішно додано.',
+  });
 }
 
 export async function updateQuestionAction(
@@ -412,7 +424,13 @@ export async function updateQuestionAction(
     },
   });
 
-  redirect(`/osbb/${question.protocol.osbbId}/protocols/${question.protocolId}/edit`);
+  return redirectWithToast(
+    `/osbb/${question.protocol.osbbId}/protocols/${question.protocolId}/edit`,
+    {
+      type: 'success',
+      message: 'Питання успішно оновлено.',
+    },
+  );
 }
 
 export async function deleteQuestionAction(
@@ -451,5 +469,11 @@ export async function deleteQuestionAction(
 
   await prisma.question.delete({ where: { id: question.id } });
 
-  redirect(`/osbb/${question.protocol.osbbId}/protocols/${question.protocolId}/edit`);
+  return redirectWithToast(
+    `/osbb/${question.protocol.osbbId}/protocols/${question.protocolId}/edit`,
+    {
+      type: 'success',
+      message: 'Питання успішно видалено.',
+    },
+  );
 }

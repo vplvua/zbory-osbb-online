@@ -2,7 +2,9 @@
 
 import { type SVGProps, useActionState } from 'react';
 import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { OwnerFormState } from '@/app/owners/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OwnerFormState = {};
 
@@ -22,10 +24,11 @@ function AlertTriangleIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 export default function OwnerDeleteForm({ ownerId, action }: OwnerDeleteFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
-    <form action={formAction} className="space-y-2">
+    <form action={formAction} className="space-y-2" data-submitting={isPending ? 'true' : 'false'}>
       <input type="hidden" name="ownerId" value={ownerId} />
       {state.error ? (
         <section className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
@@ -37,8 +40,11 @@ export default function OwnerDeleteForm({ ownerId, action }: OwnerDeleteFormProp
         type="submit"
         variant="destructive"
         confirmMessage="Ви впевнені, що хочете видалити цього співвласника?"
+        pendingLabel="Видалення..."
+        disabled={isPending}
       >
-        Видалити співвласника
+        {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+        {isPending ? 'Видалення...' : 'Видалити співвласника'}
       </ConfirmSubmitButton>
     </form>
   );

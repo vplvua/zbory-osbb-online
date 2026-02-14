@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type SheetCreateSaveButtonProps = {
   formId: string;
@@ -22,6 +24,7 @@ function hasOwnerSelection(form: HTMLFormElement): boolean {
 
 export default function SheetCreateSaveButton({ formId }: SheetCreateSaveButtonProps) {
   const [canSubmit, setCanSubmit] = useState(false);
+  const isPending = useExternalFormPending(formId);
 
   useEffect(() => {
     const form = document.getElementById(formId);
@@ -46,8 +49,9 @@ export default function SheetCreateSaveButton({ formId }: SheetCreateSaveButtonP
   }, [formId]);
 
   return (
-    <Button type="submit" form={formId} disabled={!canSubmit}>
-      Створити листок
+    <Button type="submit" form={formId} disabled={!canSubmit || isPending}>
+      {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+      {isPending ? 'Створення...' : 'Створити листок'}
     </Button>
   );
 }

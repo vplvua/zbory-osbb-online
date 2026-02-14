@@ -13,6 +13,8 @@ type ConfirmModalProps = {
   cancelLabel?: string;
   confirmVariant?: ButtonVariant;
   showCancel?: boolean;
+  confirmDisabled?: boolean;
+  cancelDisabled?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 };
@@ -25,6 +27,8 @@ export function ConfirmModal({
   cancelLabel = 'Скасувати',
   confirmVariant = 'destructive',
   showCancel = true,
+  confirmDisabled = false,
+  cancelDisabled = false,
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
@@ -75,11 +79,17 @@ export function ConfirmModal({
         <p className="text-muted-foreground mt-2 text-sm">{description}</p>
         <div className="mt-5 flex justify-end gap-2">
           {showCancel ? (
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={cancelDisabled}>
               {cancelLabel}
             </Button>
           ) : null}
-          <Button type="button" variant={confirmVariant} onClick={onConfirm} autoFocus>
+          <Button
+            type="button"
+            variant={confirmVariant}
+            onClick={onConfirm}
+            autoFocus
+            disabled={confirmDisabled}
+          >
             {confirmLabel}
           </Button>
         </div>

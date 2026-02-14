@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Textarea } from '@/components/ui/textarea';
 import type { OwnerFormState } from '@/app/owners/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OwnerFormState = {};
 type OwnershipMode = 'single' | 'fraction';
@@ -54,7 +56,8 @@ export default function OwnerForm({
   showSubmitButton = true,
   isDisabled = false,
 }: OwnerFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
   const [ownershipMode, setOwnershipMode] = useState<OwnershipMode>(() => {
     const numerator = Number.parseInt(defaultValues?.ownershipNumerator ?? '1', 10);
     const denominator = Number.parseInt(defaultValues?.ownershipDenominator ?? '1', 10);
@@ -92,8 +95,13 @@ export default function OwnerForm({
         <CardTitle>Реквізити співвласника</CardTitle>
       </CardHeader>
       <CardContent>
-        <form id={formId} action={formAction} className="space-y-4">
-          <fieldset disabled={isDisabled} className="space-y-4">
+        <form
+          id={formId}
+          action={formAction}
+          className="space-y-4"
+          data-submitting={isPending ? 'true' : 'false'}
+        >
+          <fieldset disabled={isDisabled || isPending} className="space-y-4">
             {defaultValues?.ownerId ? (
               <input type="hidden" name="ownerId" value={defaultValues.ownerId} />
             ) : null}
@@ -251,9 +259,12 @@ export default function OwnerForm({
             </div>
 
             {showSubmitButton ? (
-              <Button type="submit">
-                {submitLabel.startsWith('Додати') ? <AddIcon className="h-4 w-4" /> : null}
-                {submitLabel}
+              <Button type="submit" disabled={isPending}>
+                {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+                {!isPending && submitLabel.startsWith('Додати') ? (
+                  <AddIcon className="h-4 w-4" />
+                ) : null}
+                {isPending ? 'Збереження...' : submitLabel}
               </Button>
             ) : null}
           </fieldset>

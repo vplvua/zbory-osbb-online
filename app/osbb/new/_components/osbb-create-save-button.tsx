@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type OsbbCreateSaveButtonProps = {
   formId: string;
@@ -9,6 +11,7 @@ type OsbbCreateSaveButtonProps = {
 
 export default function OsbbCreateSaveButton({ formId }: OsbbCreateSaveButtonProps) {
   const [canSubmit, setCanSubmit] = useState(false);
+  const isPending = useExternalFormPending(formId);
 
   useEffect(() => {
     const form = document.getElementById(formId);
@@ -31,8 +34,9 @@ export default function OsbbCreateSaveButton({ formId }: OsbbCreateSaveButtonPro
   }, [formId]);
 
   return (
-    <Button type="submit" form={formId} disabled={!canSubmit}>
-      Зберегти
+    <Button type="submit" form={formId} disabled={!canSubmit || isPending}>
+      {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+      {isPending ? 'Збереження...' : 'Зберегти'}
     </Button>
   );
 }
