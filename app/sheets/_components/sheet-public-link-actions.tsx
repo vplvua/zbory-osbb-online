@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/lib/toast/client';
 
 type SheetPublicLinkActionsProps = {
   votePath: string;
@@ -32,23 +33,41 @@ function CopyIcon({ className }: { className?: string }) {
 export default function SheetPublicLinkActions({ votePath }: SheetPublicLinkActionsProps) {
   async function handleCopy() {
     const fullUrl = `${window.location.origin}${votePath}`;
+
     if (!navigator.clipboard) {
-      const textArea = document.createElement('textarea');
-      textArea.value = fullUrl;
-      textArea.style.position = 'fixed';
-      textArea.style.opacity = '0';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = fullUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (!copied) {
+          throw new Error('COPY_FAILED');
+        }
+
+        toast.success('Посилання скопійовано.');
+      } catch {
+        toast.error('Не вдалося скопіювати посилання. Спробуйте ще раз.');
+      }
+
       return;
     }
 
     try {
       await navigator.clipboard.writeText(fullUrl);
+      toast.success('Посилання скопійовано.');
     } catch {
-      await navigator.clipboard.writeText(votePath);
+      try {
+        await navigator.clipboard.writeText(votePath);
+        toast.success('Посилання скопійовано.');
+      } catch {
+        toast.error('Не вдалося скопіювати посилання. Спробуйте ще раз.');
+      }
     }
   }
 
