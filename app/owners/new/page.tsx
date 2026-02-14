@@ -9,7 +9,7 @@ import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
 const OWNER_CREATE_FORM_ID = 'owner-create-form';
 
 type OwnerNewPageProps = {
-  searchParams?: Promise<{ from?: string }>;
+  searchParams?: Promise<{ from?: string; returnTo?: string }>;
 };
 
 export default async function OwnerNewPage({ searchParams }: OwnerNewPageProps) {
@@ -28,11 +28,19 @@ export default async function OwnerNewPage({ searchParams }: OwnerNewPageProps) 
     redirect('/dashboard');
   }
 
-  const from = (await searchParams)?.from;
+  const params = await searchParams;
+  const from = params?.from;
+  const returnToParam = params?.returnTo?.trim() ?? '';
+  const safeReturnTo = returnToParam.startsWith('/sheets/new') ? returnToParam : '';
   const backLink =
     from === 'dashboard'
       ? { href: '/dashboard', label: '← Назад на головну' }
-      : { href: '/owners', label: '← Назад до співвласників' };
+      : from === 'sheets-new'
+        ? {
+            href: safeReturnTo || '/sheets/new',
+            label: '← Назад до листків опитування',
+          }
+        : { href: '/owners', label: '← Назад до співвласників' };
 
   return (
     <div className="flex h-screen flex-col">

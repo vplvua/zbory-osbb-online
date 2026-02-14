@@ -72,6 +72,23 @@ export default async function SheetNewPage({ searchParams }: SheetNewPageProps) 
     navigationSource === 'dashboard'
       ? { href: '/dashboard', label: '← Назад на головну' }
       : { href: sheetsListHref, label: '← Назад до листків опитування' };
+  const sheetsNewQuery = new URLSearchParams();
+  if (navigationSource !== 'sheets') {
+    sheetsNewQuery.set('from', navigationSource);
+  }
+  if (navigationSource === 'owner-edit' && navigationOwnerIdParam) {
+    sheetsNewQuery.set('fromOwnerId', navigationOwnerIdParam);
+  }
+  if (navigationSource === 'protocol-edit' && navigationProtocolIdParam) {
+    sheetsNewQuery.set('fromProtocolId', navigationProtocolIdParam);
+  }
+  const currentSheetsNewHref = sheetsNewQuery.toString()
+    ? `/sheets/new?${sheetsNewQuery.toString()}`
+    : '/sheets/new';
+  const ownersNewQuery = new URLSearchParams();
+  ownersNewQuery.set('from', 'sheets-new');
+  ownersNewQuery.set('returnTo', currentSheetsNewHref);
+  const ownersNewHref = `/owners/new?${ownersNewQuery.toString()}`;
 
   const [protocols, owners] = await Promise.all([
     prisma.protocol.findMany({
@@ -131,7 +148,7 @@ export default async function SheetNewPage({ searchParams }: SheetNewPageProps) 
                     </Link>
                   ) : null}
                   {owners.length === 0 ? (
-                    <Link href="/owners/new">
+                    <Link href={ownersNewHref}>
                       <Button type="button" variant="outline">
                         <AddIcon className="h-4 w-4" />
                         Додати співвласника
