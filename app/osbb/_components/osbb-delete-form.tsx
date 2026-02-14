@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import type { OsbbFormState } from '@/app/osbb/actions';
 
 const initialState: OsbbFormState = {};
@@ -17,7 +18,7 @@ export default function OsbbDeleteForm({ action, id }: OsbbDeleteFormProps) {
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="id" value={id} />
-      {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
+      {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
       <ConfirmSubmitButton
         type="submit"
         variant="destructive"

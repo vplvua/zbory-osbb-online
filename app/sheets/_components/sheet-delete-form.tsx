@@ -3,6 +3,7 @@
 import type { SVGProps } from 'react';
 import { useActionState } from 'react';
 import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import type { SheetFormState } from '@/app/sheets/actions';
 
 const initialState: SheetFormState = {};
@@ -32,7 +33,7 @@ export default function SheetDeleteForm({ sheetId, redirectTo, action }: SheetDe
     <form action={formAction} className="space-y-1">
       <input type="hidden" name="sheetId" value={sheetId} />
       {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
-      {state.error ? <p className="text-destructive text-xs">{state.error}</p> : null}
+      {state.error ? <ErrorAlert size="compact">{state.error}</ErrorAlert> : null}
       <ConfirmSubmitButton
         type="submit"
         variant="destructive"

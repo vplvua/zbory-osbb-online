@@ -83,6 +83,12 @@ function BadgeClearIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function formatProtocolLabel(number: string, dateLabel: string) {
+  const trimmedNumber = number.trim();
+  const protocolNumber = trimmedNumber.startsWith('№') ? trimmedNumber : `№${trimmedNumber}`;
+  return `${protocolNumber} від ${dateLabel}`;
+}
+
 type FilterBadgeProps = {
   label: string;
   onClear: () => void;
@@ -392,7 +398,7 @@ export default function SheetsFilters({
                           onClick={() => selectProtocol(protocol.id)}
                         >
                           <span className="font-medium">
-                            {protocol.number} ({protocol.dateLabel})
+                            {formatProtocolLabel(protocol.number, protocol.dateLabel)}
                           </span>
                           {isActive ? <CheckIcon className="text-brand h-4 w-4" /> : null}
                         </button>

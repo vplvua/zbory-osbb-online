@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
 
@@ -48,7 +49,7 @@ export default function LoginForm() {
           <PhoneInput id="phone" name="phone" value={phone} onValueChange={setPhone} required />
         </div>
 
-        {error ? <p className="text-destructive text-sm">{error}</p> : null}
+        {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 
         <Button className="w-full" type="submit" disabled={isLoading || !isPhoneComplete}>
           {isLoading ? 'Надсилання...' : 'Надіслати код'}

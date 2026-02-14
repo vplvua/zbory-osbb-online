@@ -5,6 +5,7 @@ import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,7 +62,7 @@ export function QuestionCreateForm({ action, protocolId }: QuestionFormProps) {
             Потребує 2/3 голосів
           </label>
 
-          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
+          {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
 
           <Button type="submit">
             <AddIcon className="h-4 w-4" />
@@ -128,7 +129,7 @@ export function QuestionItemForm({ action, deleteAction, question }: QuestionIte
             Потребує 2/3 голосів
           </label>
 
-          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
+          {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
 
           <div className="flex flex-wrap gap-3">
             <Button type="submit">Зберегти питання</Button>
@@ -143,9 +144,7 @@ export function QuestionItemForm({ action, deleteAction, question }: QuestionIte
             </ConfirmSubmitButton>
           </div>
 
-          {deleteState.error ? (
-            <p className="text-destructive text-sm">{deleteState.error}</p>
-          ) : null}
+          {deleteState.error ? <ErrorAlert>{deleteState.error}</ErrorAlert> : null}
         </form>
       </CardContent>
     </Card>

@@ -72,6 +72,12 @@ function AlertTriangleIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function formatProtocolLabel(number: string, dateLabel: string) {
+  const trimmedNumber = number.trim();
+  const protocolNumber = trimmedNumber.startsWith('№') ? trimmedNumber : `№${trimmedNumber}`;
+  return `${protocolNumber} від ${dateLabel}`;
+}
+
 export default function SheetCreateForm({
   action,
   redirectTo,
@@ -191,7 +197,7 @@ export default function SheetCreateForm({
                   )}
                 >
                   {selectedProtocol
-                    ? `${selectedProtocol.number} (${selectedProtocol.dateLabel})`
+                    ? formatProtocolLabel(selectedProtocol.number, selectedProtocol.dateLabel)
                     : 'Оберіть протокол'}
                 </span>
                 <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
@@ -380,7 +386,7 @@ export default function SheetCreateForm({
                           }}
                         >
                           <span className="font-medium">
-                            {protocol.number} ({protocol.dateLabel})
+                            {formatProtocolLabel(protocol.number, protocol.dateLabel)}
                           </span>
                           {isActive ? <CheckIcon className="text-brand h-4 w-4" /> : null}
                         </button>

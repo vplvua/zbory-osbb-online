@@ -1,5 +1,6 @@
 import { SheetStatus } from '@prisma/client';
 import { notFound } from 'next/navigation';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import VoteDraftSection from '@/components/vote/vote-draft-section';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
 
@@ -31,10 +32,10 @@ function renderStatusBlock(
         ) : null}
 
         {options.errorPending ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <ErrorAlert>
             Сталася помилка під час підготовки PDF. Уповноважена особа може запустити повторну
             обробку в кабінеті ОСББ.
-          </p>
+          </ErrorAlert>
         ) : null}
       </section>
     );
@@ -55,10 +56,10 @@ function renderStatusBlock(
           </p>
         ) : null}
         {options.errorPending ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <ErrorAlert>
             Підготовка PDF завершилась з помилкою. Уповноважена особа може повторити обробку в
             кабінеті ОСББ.
-          </p>
+          </ErrorAlert>
         ) : null}
         <div className="flex flex-wrap gap-2">
           {options.hasPdfFile ? (

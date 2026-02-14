@@ -1,5 +1,130 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Happy Path (local dev, mock integrations)
+
+1. Start local Postgres:
+
+```bash
+cp .env.example .env.local
+docker compose up -d
+docker compose ps
+```
+
+Expected: `db` service is `healthy`.
+
+1. Ensure `.env.local` uses mock mode in dev:
+
+- Keep `DUBIDOC_API_KEY` and `DUBIDOC_ORG_ID` empty or placeholder values (`replace-with-*`).
+- Keep `TURBOSMS_API_KEY` empty or placeholder value (`replace-with-*`).
+- Keep `NEXTAUTH_URL=http://localhost:3000`.
+
+1. Install dependencies, generate Prisma client, apply migrations:
+
+```bash
+pnpm install
+pnpm db:generate
+pnpm db:migrate
+```
+
+1. Run the app:
+
+```bash
+pnpm dev
+```
+
+Open `http://localhost:3000`.
+
+1. Login with OTP (mock SMS):
+
+- Open `/login` and request code for a phone in `+380XXXXXXXXX` format.
+- In server logs, find a line like `[SMS:MOCK] +380... -> 1234`.
+- Open `/verify` and submit this code.
+
+1. Create base entities in UI:
+
+- OSBB: open `/osbb/new`, create one OSBB.
+- Protocol: open the OSBB protocols page and create a protocol with at least 1 question.
+- Owners: open `/owners/new` and create one or more owners.
+- Sheets: open `/sheets/new`, select the protocol + owner(s), create sheet(s).
+
+1. Open public vote link and submit vote:
+
+- Open `/sheets`, in "Публічне посилання" click `Перейти` (or `Копіювати`) to open `/vote/<TOKEN>`.
+- For local happy-path testing, submit via API (current MVP behavior):
+
+```bash
+curl "http://localhost:3000/api/vote/<TOKEN>"
+```
+
+Use returned `sheet.questions[].id` values in submit request:
+
+```bash
+curl -X POST "http://localhost:3000/api/vote/<TOKEN>" \
+  -H "content-type: application/json" \
+  -d '{
+    "answers": [
+      { "questionId": "<QUESTION_ID_1>", "vote": "FOR" }
+    ],
+    "consent": true
+  }'
+```
+
+Expected: response contains `"ok": true`, sheet status becomes `PENDING_ORGANIZER`.
+
+1. Simulate signing in mock mode -> `SIGNED`:
+
+Set a mock Dubidoc document ID for this sheet:
+
+```bash
+docker compose exec db psql -U postgres -d zbory_dev -c \
+"UPDATE \"Sheet\" SET \"dubidocDocumentId\"='mock-doc-local-1' WHERE \"publicToken\"='<TOKEN>';"
+```
+
+Simulate webhook events:
+
+```bash
+curl -X POST "http://localhost:3000/api/dev/dubidoc/mock-webhook" \
+  -H "content-type: application/json" \
+  -d '{"documentId":"mock-doc-local-1","event":"OWNER_SIGNED"}'
+
+curl -X POST "http://localhost:3000/api/dev/dubidoc/mock-webhook" \
+  -H "content-type: application/json" \
+  -d '{"documentId":"mock-doc-local-1","event":"ORGANIZER_SIGNED"}'
+```
+
+Refresh `/vote/<TOKEN>` (or `/sheets`) and verify status `SIGNED`.
+
+1. Download files:
+
+- From public page `/vote/<TOKEN>` (after `SIGNED`): original PDF, visualization PDF, `.p7s`.
+- Or via API:
+
+```bash
+curl -L "http://localhost:3000/api/vote/<TOKEN>/downloads/original" -o sheet-original.pdf
+curl -L "http://localhost:3000/api/vote/<TOKEN>/downloads/visualization" -o sheet-visualization.pdf
+curl -L "http://localhost:3000/api/vote/<TOKEN>/downloads/signed" -o sheet-signed.p7s
+```
+
+## Troubleshooting (local)
+
+- `db` is not healthy:
+  - Run `docker compose logs -f db`.
+  - Check port `5432` is free.
+  - Restart with `docker compose down && docker compose up -d`.
+- Prisma cannot connect (`P1001`):
+  - Confirm `DATABASE_URL` in `.env.local`.
+  - Confirm DB container is running and healthy.
+- OTP fails in dev:
+  - Keep `TURBOSMS_API_KEY` empty/placeholder to force mock SMS mode.
+  - Verify phone format is `+380XXXXXXXXX`.
+- Mock webhook returns "disabled when real Dubidoc mode is enabled":
+  - Clear `DUBIDOC_API_KEY` and `DUBIDOC_ORG_ID` in `.env.local`.
+- Mock webhook says sheet not found for document:
+  - Ensure `Sheet.dubidocDocumentId` exactly matches `documentId` in webhook payload.
+- Download returns 409:
+  - `original/visualization`: PDF is not ready yet.
+  - `signed`: sheet is not yet `SIGNED`; send organizer webhook event first.
+
 ## Local DB quickstart
 
 1. Copy env template:
@@ -85,7 +210,7 @@ If your migrations are applied by a role different from `postgres`, pass that ro
 cp .env.example .env.local
 ```
 
-1. `DATABASE_URL` points to your local Postgres instance (default: `localhost:5432`).
+1. `DATABASE_URL` and `DIRECT_URL` point to your local Postgres instance (default: `localhost:5432`).
 
 ## Integrations keys mode (MVP)
 

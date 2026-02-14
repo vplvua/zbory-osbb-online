@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -116,7 +117,7 @@ export default function OsbbForm({
             </div>
           </div>
 
-          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
+          {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
 
           {showSubmitButton ? <Button type="submit">{submitLabel}</Button> : null}
         </form>

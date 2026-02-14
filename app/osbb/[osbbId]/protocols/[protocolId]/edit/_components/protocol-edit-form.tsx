@@ -5,6 +5,7 @@ import { useActionState, useMemo, useState } from 'react';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -118,6 +119,8 @@ export default function ProtocolEditForm({ formId, action, defaultValues }: Prot
 
   return (
     <form id={formId} action={formAction} className="space-y-6">
+      {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Реквізити протоколу</CardTitle>
@@ -241,8 +244,6 @@ export default function ProtocolEditForm({ formId, action, defaultValues }: Prot
           Додати питання
         </Button>
       </section>
-
-      {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
     </form>
   );
 }

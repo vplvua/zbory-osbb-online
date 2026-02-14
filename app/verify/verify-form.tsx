@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -74,7 +75,7 @@ export default function VerifyForm({ initialPhone }: VerifyFormProps) {
         />
       </div>
 
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 
       <Button className="w-full" type="submit" disabled={isLoading}>
         {isLoading ? 'Перевірка...' : 'Підтвердити'}

@@ -4,6 +4,7 @@ import { type ChangeEvent, useActionState, useState } from 'react';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -257,7 +258,7 @@ export default function OwnerForm({
             ) : null}
           </fieldset>
 
-          {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
+          {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
         </form>
       </CardContent>
     </Card>

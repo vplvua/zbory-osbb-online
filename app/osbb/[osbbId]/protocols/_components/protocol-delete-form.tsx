@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode, SVGProps } from 'react';
 import { useActionState, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
 
 const initialState: ProtocolFormState = {};
@@ -88,7 +89,7 @@ export default function DeleteProtocolForm({
     <>
       <form action={formAction} className={className ?? 'space-y-2'}>
         <input type="hidden" name="protocolId" value={protocolId} />
-        {state.error ? <p className="text-destructive text-sm">{state.error}</p> : null}
+        {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
         <Button
           ref={submitterRef}
           type="submit"
