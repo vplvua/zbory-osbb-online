@@ -10,13 +10,21 @@ const simulateWebhookSchema = z.object({
   occurredAt: z.string().trim().min(1).optional(),
 });
 
-function isDevMode(): boolean {
-  return process.env.NODE_ENV !== 'production';
+function isDevRouteEnabled(): boolean {
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+
+  if (process.env.VERCEL_ENV === 'production') {
+    return false;
+  }
+
+  return true;
 }
 
 export async function POST(request: Request): Promise<Response> {
-  if (!isDevMode()) {
-    return NextResponse.json({ ok: false, message: 'Not found.' }, { status: 404 });
+  if (!isDevRouteEnabled()) {
+    return new NextResponse(null, { status: 404 });
   }
 
   if (isDubidocConfigured()) {
