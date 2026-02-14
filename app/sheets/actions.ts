@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { Prisma, SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
@@ -9,6 +8,7 @@ import { generateAndStoreSheetPdf } from '@/lib/sheet/pdf-processing';
 import { sheetBulkCreateSchema } from '@/lib/sheet/validation';
 import { generatePublicToken } from '@/lib/tokens';
 import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
+import { redirectWithToast } from '@/lib/toast/server';
 
 export type SheetFormState = {
   error?: string;
@@ -237,7 +237,16 @@ export async function createSheetAction(
     }
   }
 
-  redirect(getSheetsRedirectPath(formData));
+  const createdSheetsCount = createdSheetIds.length;
+  const successMessage =
+    createdSheetsCount === 1
+      ? 'Листок опитування успішно створено.'
+      : `Успішно створено ${createdSheetsCount} листків опитування.`;
+
+  return redirectWithToast(getSheetsRedirectPath(formData), {
+    type: 'success',
+    message: successMessage,
+  });
 }
 
 export async function retrySheetPdfAction(
@@ -300,7 +309,10 @@ export async function retrySheetPdfAction(
     return { error: result.message };
   }
 
-  redirect(getSheetsRedirectPath(formData));
+  return redirectWithToast(getSheetsRedirectPath(formData), {
+    type: 'success',
+    message: 'PDF листка успішно сформовано.',
+  });
 }
 
 export async function deleteSheetAction(
@@ -357,5 +369,8 @@ export async function deleteSheetAction(
     where: { id: sheet.id },
   });
 
-  redirect(getSheetsRedirectPath(formData));
+  return redirectWithToast(getSheetsRedirectPath(formData), {
+    type: 'success',
+    message: 'Листок опитування успішно видалено.',
+  });
 }

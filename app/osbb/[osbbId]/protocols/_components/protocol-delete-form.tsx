@@ -7,6 +7,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: ProtocolFormState = {};
 
@@ -50,6 +51,7 @@ export default function DeleteProtocolForm({
   hasSignedSheets = false,
 }: ProtocolDeleteFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
   const [isOpen, setIsOpen] = useState(false);
   const submitterRef = useRef<HTMLButtonElement>(null);
 

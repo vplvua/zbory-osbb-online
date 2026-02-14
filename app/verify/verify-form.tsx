@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
+import { toast } from '@/lib/toast/client';
 
 type VerifyFormProps = {
   initialPhone: string;
@@ -41,13 +42,18 @@ export default function VerifyForm({ initialPhone }: VerifyFormProps) {
       const result = (await response.json()) as { ok: boolean; message?: string };
 
       if (!response.ok || !result.ok) {
-        setError(result.message ?? 'Не вдалося підтвердити код.');
+        const message = result.message ?? 'Не вдалося підтвердити код.';
+        setError(message);
+        toast.error(message);
         return;
       }
 
+      toast.success('Вхід виконано успішно.');
       router.push('/dashboard');
     } catch {
-      setError('Сталася помилка. Спробуйте ще раз.');
+      const message = 'Сталася помилка. Спробуйте ще раз.';
+      setError(message);
+      toast.error(message);
     } finally {
       requestInFlightRef.current = false;
       setIsLoading(false);

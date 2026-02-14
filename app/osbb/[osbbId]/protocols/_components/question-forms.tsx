@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Textarea } from '@/components/ui/textarea';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: ProtocolFormState = {};
 
@@ -33,6 +34,7 @@ type QuestionItemProps = {
 
 export function QuestionCreateForm({ action, protocolId }: QuestionFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
     <Card>
@@ -87,6 +89,8 @@ export function QuestionItemForm({ action, deleteAction, question }: QuestionIte
     deleteAction,
     initialState,
   );
+  useActionErrorToast(state.error);
+  useActionErrorToast(deleteState.error);
   const isPending = isUpdatePending || isDeletePending;
 
   return (

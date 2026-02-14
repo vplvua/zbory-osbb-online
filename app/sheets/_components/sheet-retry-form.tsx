@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { SheetFormState } from '@/app/sheets/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: SheetFormState = {};
 
@@ -16,6 +17,7 @@ type SheetRetryFormProps = {
 
 export default function SheetRetryForm({ sheetId, redirectTo, action }: SheetRetryFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
     <form action={formAction} className="space-y-1" data-submitting={isPending ? 'true' : 'false'}>

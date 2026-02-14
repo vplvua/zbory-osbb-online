@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Textarea } from '@/components/ui/textarea';
 import type { OwnerFormState } from '@/app/owners/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OwnerFormState = {};
 type OwnershipMode = 'single' | 'fraction';
@@ -56,6 +57,7 @@ export default function OwnerForm({
   isDisabled = false,
 }: OwnerFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
   const [ownershipMode, setOwnershipMode] = useState<OwnershipMode>(() => {
     const numerator = Number.parseInt(defaultValues?.ownershipNumerator ?? '1', 10);
     const denominator = Number.parseInt(defaultValues?.ownershipDenominator ?? '1', 10);

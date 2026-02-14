@@ -6,6 +6,7 @@ import type { Vote } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { toast } from '@/lib/toast/client';
 import type { VoteSheetQuestionDto } from '@/lib/vote/types';
 
 type VoteFormProps = {
@@ -66,19 +67,25 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
       const result = (await response.json()) as VoteSubmitResult;
 
       if (!response.ok || !result.ok) {
-        setError(result.message ?? 'Не вдалося надіслати голос.');
+        const message = result.message ?? 'Не вдалося надіслати голос.';
+        setError(message);
+        toast.error(message);
         return;
       }
 
       const redirectUrl = result.redirectUrl ?? result.signRedirectUrl ?? result.signUrl;
       if (redirectUrl) {
+        toast.info('Голос прийнято. Перенаправляємо до підпису.');
         window.location.assign(redirectUrl);
         return;
       }
 
+      toast.success('Голос успішно надіслано.');
       router.refresh();
     } catch {
-      setError('Сталася помилка під час надсилання голосу. Спробуйте ще раз.');
+      const message = 'Сталася помилка під час надсилання голосу. Спробуйте ще раз.';
+      setError(message);
+      toast.error(message);
     } finally {
       submitLockRef.current = false;
       setIsSubmitting(false);

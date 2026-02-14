@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: ProtocolFormState = {};
 
@@ -35,6 +36,7 @@ export default function ProtocolForm({
   title = 'Реквізити протоколу',
 }: ProtocolFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
     <Card>

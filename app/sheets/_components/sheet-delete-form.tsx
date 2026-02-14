@@ -6,6 +6,7 @@ import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { SheetFormState } from '@/app/sheets/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: SheetFormState = {};
 
@@ -29,6 +30,7 @@ function TrashIcon(props: SVGProps<SVGSVGElement>) {
 
 export default function SheetDeleteForm({ sheetId, redirectTo, action }: SheetDeleteFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
     <form action={formAction} className="space-y-1" data-submitting={isPending ? 'true' : 'false'}>

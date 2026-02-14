@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { SheetFormState } from '@/app/sheets/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 import { cn } from '@/lib/utils';
 
 const initialState: SheetFormState = {};
@@ -89,6 +90,7 @@ export default function SheetCreateForm({
   defaultSurveyDate,
 }: SheetCreateFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
   const formRef = useRef<HTMLFormElement | null>(null);
   const [selectedProtocolId, setSelectedProtocolId] = useState('');
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);

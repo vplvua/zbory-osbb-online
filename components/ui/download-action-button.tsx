@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { toast } from '@/lib/toast/client';
 
 type DownloadActionButtonProps = {
   href: string;
@@ -72,8 +73,11 @@ export function DownloadActionButton({
       anchor.click();
       anchor.remove();
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      toast.success('Файл успішно завантажено.');
     } catch {
-      setError('Не вдалося завантажити файл. Спробуйте ще раз.');
+      const message = 'Не вдалося завантажити файл. Спробуйте ще раз.';
+      setError(message);
+      toast.error(message);
     } finally {
       downloadLockRef.current = false;
       setIsPending(false);

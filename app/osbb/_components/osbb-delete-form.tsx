@@ -5,6 +5,7 @@ import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { OsbbFormState } from '@/app/osbb/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OsbbFormState = {};
 
@@ -15,6 +16,7 @@ type OsbbDeleteFormProps = {
 
 export default function OsbbDeleteForm({ action, id }: OsbbDeleteFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
     <form action={formAction} className="space-y-2" data-submitting={isPending ? 'true' : 'false'}>

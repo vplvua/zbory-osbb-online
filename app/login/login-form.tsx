@@ -7,6 +7,7 @@ import { ErrorAlert } from '@/components/ui/error-alert';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
+import { toast } from '@/lib/toast/client';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -36,13 +37,18 @@ export default function LoginForm() {
       const result = (await response.json()) as { ok: boolean; message?: string };
 
       if (!response.ok || !result.ok) {
-        setError(result.message ?? 'Не вдалося надіслати код.');
+        const message = result.message ?? 'Не вдалося надіслати код.';
+        setError(message);
+        toast.error(message);
         return;
       }
 
+      toast.success('Код підтвердження надіслано.');
       router.push(`/verify?phone=${encodeURIComponent(phone)}`);
     } catch {
-      setError('Сталася помилка. Спробуйте ще раз.');
+      const message = 'Сталася помилка. Спробуйте ще раз.';
+      setError(message);
+      toast.error(message);
     } finally {
       requestInFlightRef.current = false;
       setIsLoading(false);

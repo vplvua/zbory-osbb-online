@@ -4,6 +4,7 @@ import { type SVGProps, useActionState } from 'react';
 import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { OwnerFormState } from '@/app/owners/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OwnerFormState = {};
 
@@ -24,6 +25,7 @@ function AlertTriangleIcon(props: SVGProps<SVGSVGElement>) {
 
 export default function OwnerDeleteForm({ ownerId, action }: OwnerDeleteFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
     <form action={formAction} className="space-y-2" data-submitting={isPending ? 'true' : 'false'}>

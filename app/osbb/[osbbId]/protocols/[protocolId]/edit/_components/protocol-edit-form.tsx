@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Textarea } from '@/components/ui/textarea';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: ProtocolFormState = {};
 
@@ -61,6 +62,7 @@ function createClientId() {
 
 export default function ProtocolEditForm({ formId, action, defaultValues }: ProtocolEditFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   const initialQuestions = useMemo<EditableQuestion[]>(
     () =>

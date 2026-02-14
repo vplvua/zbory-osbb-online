@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
 import type { OsbbFormState } from '@/app/osbb/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OsbbFormState = {};
 
@@ -37,6 +38,7 @@ export default function OsbbForm({
   submitLabel,
 }: OsbbFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  useActionErrorToast(state.error);
 
   return (
     <Card>
