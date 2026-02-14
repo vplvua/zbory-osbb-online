@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { readJsonBody, resolveApiErrorMessage, type ApiErrorCodeMap } from '@/lib/api/client-error';
 import { toast } from '@/lib/toast/client';
 
 type DownloadActionButtonProps = {
@@ -14,6 +15,17 @@ type DownloadActionButtonProps = {
   className?: string;
   icon?: ReactNode;
   disabled?: boolean;
+};
+
+const UNKNOWN_DOWNLOAD_ERROR_MESSAGE = 'Не вдалося завантажити файл. Спробуйте ще раз.';
+const DOWNLOAD_ERROR_MAP: ApiErrorCodeMap = {
+  DOWNLOAD_UNAUTHORIZED: 'Потрібна авторизація.',
+  DOWNLOAD_INVALID_KIND: 'Невірний тип файлу.',
+  DOWNLOAD_SHEET_NOT_FOUND: 'Листок не знайдено.',
+  DOWNLOAD_SHEET_NOT_SIGNED: 'Завантаження доступне лише після повного підписання листка.',
+  DOWNLOAD_PDF_NOT_AVAILABLE: 'PDF ще недоступний.',
+  DOWNLOAD_SIGNED_NOT_AVAILABLE: 'Підписаний контейнер ще недоступний.',
+  DOWNLOAD_PREPARE_FAILED: 'Не вдалося підготувати файл для завантаження.',
 };
 
 function parseFilename(contentDisposition: string | null): string | null {
@@ -59,7 +71,14 @@ export function DownloadActionButton({
     try {
       const response = await fetch(href, { method: 'GET' });
       if (!response.ok) {
-        throw new Error('DOWNLOAD_FAILED');
+        const payload = await readJsonBody(response);
+        const message = resolveApiErrorMessage(payload, {
+          codeMap: DOWNLOAD_ERROR_MAP,
+          fallbackMessage: UNKNOWN_DOWNLOAD_ERROR_MESSAGE,
+        });
+        setError(message);
+        toast.error(message);
+        return;
       }
 
       const blob = await response.blob();
@@ -75,7 +94,7 @@ export function DownloadActionButton({
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       toast.success('Файл успішно завантажено.');
     } catch {
-      const message = 'Не вдалося завантажити файл. Спробуйте ще раз.';
+      const message = UNKNOWN_DOWNLOAD_ERROR_MESSAGE;
       setError(message);
       toast.error(message);
     } finally {

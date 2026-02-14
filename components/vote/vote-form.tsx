@@ -6,6 +6,8 @@ import type { Vote } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { readJsonBody, resolveApiErrorMessage, type ApiErrorCodeMap } from '@/lib/api/client-error';
+import { isApiOkDto } from '@/lib/api/error-dto';
 import { toast } from '@/lib/toast/client';
 import type { VoteSheetQuestionDto } from '@/lib/vote/types';
 
@@ -15,12 +17,27 @@ type VoteFormProps = {
   disabled: boolean;
 };
 
-type VoteSubmitResult = {
-  ok: boolean;
-  message?: string;
+type VoteSubmitSuccess = {
+  ok: true;
   redirectUrl?: string;
   signRedirectUrl?: string;
   signUrl?: string;
+};
+
+const UNKNOWN_VOTE_ERROR_MESSAGE = 'Сталася помилка під час надсилання голосу. Спробуйте ще раз.';
+const VOTE_ERROR_MAP: ApiErrorCodeMap = {
+  VOTE_INVALID_JSON: 'Невірні дані. Оновіть сторінку та спробуйте ще раз.',
+  VOTE_INVALID_PAYLOAD: 'Заповніть усі відповіді та підтвердьте згоду.',
+  VOTE_SHEET_NOT_FOUND: 'Листок не знайдено.',
+  VOTE_EXPIRED: 'Термін голосування завершено.',
+  VOTE_ALREADY_SUBMITTED: 'Листок вже подано та очікує наступного етапу.',
+  VOTE_DUPLICATE_QUESTION: 'Питання не можуть повторюватися.',
+  VOTE_INCOMPLETE_ANSWERS: 'Потрібно відповісти на всі питання.',
+  VOTE_UNKNOWN_QUESTION: 'Відповідь містить невірне питання.',
+  VOTE_STATE_CONFLICT: 'Листок більше не доступний для подання.',
+  VOTE_SAVE_FAILED: 'Не вдалося зберегти голос. Спробуйте ще раз.',
+  VOTE_REFRESH_FAILED: 'Голос збережено, але не вдалося оновити дані листка.',
+  VOTE_SUBMIT_FAILED: 'Не вдалося зберегти голос. Спробуйте ще раз.',
 };
 
 export default function VoteForm({ token, questions, disabled }: VoteFormProps) {
@@ -64,15 +81,18 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
         }),
       });
 
-      const result = (await response.json()) as VoteSubmitResult;
-
-      if (!response.ok || !result.ok) {
-        const message = result.message ?? 'Не вдалося надіслати голос.';
+      const payload = await readJsonBody(response);
+      if (!response.ok || !isApiOkDto(payload)) {
+        const message = resolveApiErrorMessage(payload, {
+          codeMap: VOTE_ERROR_MAP,
+          fallbackMessage: UNKNOWN_VOTE_ERROR_MESSAGE,
+        });
         setError(message);
         toast.error(message);
         return;
       }
 
+      const result = payload as VoteSubmitSuccess;
       const redirectUrl = result.redirectUrl ?? result.signRedirectUrl ?? result.signUrl;
       if (redirectUrl) {
         toast.info('Голос прийнято. Перенаправляємо до підпису.');
@@ -83,7 +103,7 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
       toast.success('Голос успішно надіслано.');
       router.refresh();
     } catch {
-      const message = 'Сталася помилка під час надсилання голосу. Спробуйте ще раз.';
+      const message = UNKNOWN_VOTE_ERROR_MESSAGE;
       setError(message);
       toast.error(message);
     } finally {

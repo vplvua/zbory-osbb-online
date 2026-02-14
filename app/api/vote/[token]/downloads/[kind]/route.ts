@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiErrorResponse } from '@/lib/api/error-response';
 import { isValidPublicToken } from '@/lib/tokens';
 import { makeDownloadResponse, parseSheetDownloadKind } from '@/lib/sheet/download-route';
 import { preparePublicSheetDownload } from '@/lib/sheet/downloads';
@@ -11,46 +11,65 @@ export async function GET(
 ): Promise<Response> {
   const { token, kind: rawKind } = await params;
   if (!isValidPublicToken(token)) {
-    return NextResponse.json({ ok: false, message: 'Листок не знайдено.' }, { status: 404 });
+    return apiErrorResponse({
+      status: 404,
+      code: 'DOWNLOAD_SHEET_NOT_FOUND',
+      message: 'Листок не знайдено.',
+    });
   }
 
   const kind = parseSheetDownloadKind(rawKind);
   if (!kind) {
-    return NextResponse.json({ ok: false, message: 'Невірний тип файлу.' }, { status: 404 });
+    return apiErrorResponse({
+      status: 404,
+      code: 'DOWNLOAD_INVALID_KIND',
+      message: 'Невірний тип файлу.',
+    });
   }
 
   try {
     const prepared = await preparePublicSheetDownload(token, kind);
     if (!prepared) {
-      return NextResponse.json({ ok: false, message: 'Листок не знайдено.' }, { status: 404 });
+      return apiErrorResponse({
+        status: 404,
+        code: 'DOWNLOAD_SHEET_NOT_FOUND',
+        message: 'Листок не знайдено.',
+      });
     }
 
     return makeDownloadResponse(prepared.bytes, prepared.filename, prepared.contentType);
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'SHEET_NOT_SIGNED') {
-        return NextResponse.json(
-          { ok: false, message: 'Завантаження доступне лише після повного підписання листка.' },
-          { status: 409 },
-        );
+        return apiErrorResponse({
+          status: 409,
+          code: 'DOWNLOAD_SHEET_NOT_SIGNED',
+          message: 'Завантаження доступне лише після повного підписання листка.',
+        });
       }
 
       if (error.message === 'PDF_NOT_AVAILABLE') {
-        return NextResponse.json({ ok: false, message: 'PDF ще недоступний.' }, { status: 409 });
+        return apiErrorResponse({
+          status: 409,
+          code: 'DOWNLOAD_PDF_NOT_AVAILABLE',
+          message: 'PDF ще недоступний.',
+        });
       }
 
       if (error.message === 'SIGNED_NOT_AVAILABLE') {
-        return NextResponse.json(
-          { ok: false, message: 'Підписаний контейнер ще недоступний.' },
-          { status: 409 },
-        );
+        return apiErrorResponse({
+          status: 409,
+          code: 'DOWNLOAD_SIGNED_NOT_AVAILABLE',
+          message: 'Підписаний контейнер ще недоступний.',
+        });
       }
     }
 
     console.error('[vote:download] failed', { token, kind, error });
-    return NextResponse.json(
-      { ok: false, message: 'Не вдалося підготувати файл для завантаження.' },
-      { status: 500 },
-    );
+    return apiErrorResponse({
+      status: 500,
+      code: 'DOWNLOAD_PREPARE_FAILED',
+      message: 'Не вдалося підготувати файл для завантаження.',
+    });
   }
 }
