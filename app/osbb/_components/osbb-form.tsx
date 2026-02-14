@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
 import type { OsbbFormState } from '@/app/osbb/actions';
 
@@ -35,7 +36,7 @@ export default function OsbbForm({
   defaultValues,
   submitLabel,
 }: OsbbFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
 
   return (
     <Card>
@@ -43,83 +44,95 @@ export default function OsbbForm({
         <CardTitle>Реквізити ОСББ</CardTitle>
       </CardHeader>
       <CardContent>
-        <form id={formId} action={formAction} className="space-y-4">
-          {defaultValues?.id ? <input type="hidden" name="id" value={defaultValues.id} /> : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="name">Повна назва</Label>
-            <Input id="name" name="name" defaultValue={defaultValues?.name ?? ''} required />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="shortName">Коротка назва</Label>
-            <Input
-              id="shortName"
-              name="shortName"
-              defaultValue={defaultValues?.shortName ?? ''}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address">Адреса</Label>
-            <Input
-              id="address"
-              name="address"
-              defaultValue={defaultValues?.address ?? ''}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edrpou">ЄДРПОУ</Label>
-            <Input
-              id="edrpou"
-              name="edrpou"
-              defaultValue={defaultValues?.edrpou ?? ''}
-              required
-              inputMode="numeric"
-            />
-          </div>
-
-          <div className="space-y-4 pt-2">
-            <h3 className="text-base font-semibold">Особа, яка проводить опитування</h3>
+        <form
+          id={formId}
+          action={formAction}
+          className="space-y-4"
+          data-submitting={isPending ? 'true' : 'false'}
+        >
+          <fieldset disabled={isPending} className="space-y-4">
+            {defaultValues?.id ? <input type="hidden" name="id" value={defaultValues.id} /> : null}
 
             <div className="space-y-2">
-              <Label htmlFor="organizerName">ПІБ</Label>
+              <Label htmlFor="name">Повна назва</Label>
+              <Input id="name" name="name" defaultValue={defaultValues?.name ?? ''} required />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shortName">Коротка назва</Label>
               <Input
-                id="organizerName"
-                name="organizerName"
-                defaultValue={defaultValues?.organizerName ?? ''}
+                id="shortName"
+                name="shortName"
+                defaultValue={defaultValues?.shortName ?? ''}
                 required
               />
             </div>
 
-            <div className="mt-4 space-y-2">
-              <Label htmlFor="organizerEmail">Електронна адреса</Label>
+            <div className="space-y-2">
+              <Label htmlFor="address">Адреса</Label>
               <Input
-                id="organizerEmail"
-                name="organizerEmail"
-                type="email"
-                defaultValue={defaultValues?.organizerEmail ?? ''}
+                id="address"
+                name="address"
+                defaultValue={defaultValues?.address ?? ''}
                 required
               />
             </div>
 
-            <div className="mt-4 space-y-2">
-              <Label htmlFor="organizerPhone">Номер телефону</Label>
-              <PhoneInput
-                id="organizerPhone"
-                name="organizerPhone"
-                defaultValue={defaultValues?.organizerPhone ?? ''}
+            <div className="space-y-2">
+              <Label htmlFor="edrpou">ЄДРПОУ</Label>
+              <Input
+                id="edrpou"
+                name="edrpou"
+                defaultValue={defaultValues?.edrpou ?? ''}
                 required
+                inputMode="numeric"
               />
             </div>
-          </div>
 
-          {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
+            <div className="space-y-4 pt-2">
+              <h3 className="text-base font-semibold">Особа, яка проводить опитування</h3>
 
-          {showSubmitButton ? <Button type="submit">{submitLabel}</Button> : null}
+              <div className="space-y-2">
+                <Label htmlFor="organizerName">ПІБ</Label>
+                <Input
+                  id="organizerName"
+                  name="organizerName"
+                  defaultValue={defaultValues?.organizerName ?? ''}
+                  required
+                />
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="organizerEmail">Електронна адреса</Label>
+                <Input
+                  id="organizerEmail"
+                  name="organizerEmail"
+                  type="email"
+                  defaultValue={defaultValues?.organizerEmail ?? ''}
+                  required
+                />
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="organizerPhone">Номер телефону</Label>
+                <PhoneInput
+                  id="organizerPhone"
+                  name="organizerPhone"
+                  defaultValue={defaultValues?.organizerPhone ?? ''}
+                  required
+                />
+              </div>
+            </div>
+
+            {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
+
+            {showSubmitButton ? (
+              <Button type="submit" disabled={isPending}>
+                {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+                {isPending ? 'Збереження...' : submitLabel}
+              </Button>
+            ) : null}
+          </fieldset>
         </form>
       </CardContent>
     </Card>

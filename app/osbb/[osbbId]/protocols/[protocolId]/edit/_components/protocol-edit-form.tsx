@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Textarea } from '@/components/ui/textarea';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
 
@@ -59,7 +60,7 @@ function createClientId() {
 }
 
 export default function ProtocolEditForm({ formId, action, defaultValues }: ProtocolEditFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
 
   const initialQuestions = useMemo<EditableQuestion[]>(
     () =>
@@ -118,132 +119,145 @@ export default function ProtocolEditForm({ formId, action, defaultValues }: Prot
   };
 
   return (
-    <form id={formId} action={formAction} className="space-y-6">
-      {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
+    <form
+      id={formId}
+      action={formAction}
+      className="space-y-6"
+      data-submitting={isPending ? 'true' : 'false'}
+    >
+      <fieldset disabled={isPending} className="space-y-6">
+        {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Реквізити протоколу</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <input type="hidden" name="protocolId" value={defaultValues.protocolId} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Реквізити протоколу</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <input type="hidden" name="protocolId" value={defaultValues.protocolId} />
 
-          <div className="space-y-2">
-            <Label htmlFor="number">Номер протоколу</Label>
-            <Input id="number" name="number" defaultValue={defaultValues.number} required />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="date">Дата зборів</Label>
-            <div className="w-37.5 max-w-full">
-              <Input
-                id="date"
-                name="date"
-                type="date"
-                defaultValue={defaultValues.date}
-                className="block w-full"
-                required
-              />
+            <div className="space-y-2">
+              <Label htmlFor="number">Номер протоколу</Label>
+              <Input id="number" name="number" defaultValue={defaultValues.number} required />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="type">Тип зборів</Label>
-            <select
-              id="type"
-              name="type"
-              defaultValue={defaultValues.type}
-              className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              required
-            >
-              <option value="GENERAL">Загальні</option>
-              <option value="ESTABLISHMENT">Установчі</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="space-y-2">
+              <Label htmlFor="date">Дата зборів</Label>
+              <div className="w-37.5 max-w-full">
+                <Input
+                  id="date"
+                  name="date"
+                  type="date"
+                  defaultValue={defaultValues.date}
+                  className="block w-full"
+                  required
+                />
+              </div>
+            </div>
 
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Питання порядку денного</h2>
+            <div className="space-y-2">
+              <Label htmlFor="type">Тип зборів</Label>
+              <select
+                id="type"
+                name="type"
+                defaultValue={defaultValues.type}
+                className="border-border bg-surface text-foreground focus-visible:ring-ring focus-visible:ring-offset-background h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                required
+              >
+                <option value="GENERAL">Загальні</option>
+                <option value="ESTABLISHMENT">Установчі</option>
+              </select>
+            </div>
+          </CardContent>
+        </Card>
 
-        {questions.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Питання ще не додані.</p>
-        ) : (
-          <div className="space-y-4">
-            {questions.map((question, index) => (
-              <Card key={question.clientId}>
-                <CardHeader>
-                  <CardTitle>Питання #{index + 1}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {question.id ? (
-                    <input type="hidden" name={`questions.${index}.id`} value={question.id} />
-                  ) : null}
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold">Питання порядку денного</h2>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`question-text-${question.clientId}`}>Текст питання</Label>
-                    <Textarea
-                      id={`question-text-${question.clientId}`}
-                      name={`questions.${index}.text`}
-                      value={question.text}
-                      onChange={(event) => {
-                        updateQuestion(question.clientId, 'text', event.target.value);
+          {questions.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Питання ще не додані.</p>
+          ) : (
+            <div className="space-y-4">
+              {questions.map((question, index) => (
+                <Card key={question.clientId}>
+                  <CardHeader>
+                    <CardTitle>Питання #{index + 1}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {question.id ? (
+                      <input type="hidden" name={`questions.${index}.id`} value={question.id} />
+                    ) : null}
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`question-text-${question.clientId}`}>Текст питання</Label>
+                      <Textarea
+                        id={`question-text-${question.clientId}`}
+                        name={`questions.${index}.text`}
+                        value={question.text}
+                        onChange={(event) => {
+                          updateQuestion(question.clientId, 'text', event.target.value);
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`question-proposal-${question.clientId}`}>Пропозиція</Label>
+                      <Textarea
+                        id={`question-proposal-${question.clientId}`}
+                        name={`questions.${index}.proposal`}
+                        value={question.proposal}
+                        onChange={(event) => {
+                          updateQuestion(question.clientId, 'proposal', event.target.value);
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        className="accent-brand"
+                        type="checkbox"
+                        name={`questions.${index}.requiresTwoThirds`}
+                        checked={question.requiresTwoThirds}
+                        onChange={(event) => {
+                          updateQuestion(
+                            question.clientId,
+                            'requiresTwoThirds',
+                            event.target.checked,
+                          );
+                        }}
+                      />
+                      Потребує 2/3 голосів
+                    </label>
+
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        removeQuestion(question.clientId);
                       }}
-                      required
-                    />
-                  </div>
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                      Видалити
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`question-proposal-${question.clientId}`}>Пропозиція</Label>
-                    <Textarea
-                      id={`question-proposal-${question.clientId}`}
-                      name={`questions.${index}.proposal`}
-                      value={question.proposal}
-                      onChange={(event) => {
-                        updateQuestion(question.clientId, 'proposal', event.target.value);
-                      }}
-                      required
-                    />
-                  </div>
-
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      className="accent-brand"
-                      type="checkbox"
-                      name={`questions.${index}.requiresTwoThirds`}
-                      checked={question.requiresTwoThirds}
-                      onChange={(event) => {
-                        updateQuestion(
-                          question.clientId,
-                          'requiresTwoThirds',
-                          event.target.checked,
-                        );
-                      }}
-                    />
-                    Потребує 2/3 голосів
-                  </label>
-
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => {
-                      removeQuestion(question.clientId);
-                    }}
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                    Видалити
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        <Button type="button" onClick={addQuestion}>
-          <AddIcon className="h-4 w-4" />
-          Додати питання
-        </Button>
-      </section>
+          <Button type="button" onClick={addQuestion}>
+            <AddIcon className="h-4 w-4" />
+            Додати питання
+          </Button>
+        </section>
+      </fieldset>
+      {isPending ? (
+        <p className="text-muted-foreground inline-flex items-center gap-2 text-sm">
+          <LoadingSpinner className="h-4 w-4" />
+          Зберігаємо зміни...
+        </p>
+      ) : null}
     </form>
   );
 }

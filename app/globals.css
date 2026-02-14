@@ -96,3 +96,13 @@ p {
 ::selection {
   background: rgba(76, 61, 255, 0.2);
 }
+
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role='button'][aria-disabled='true'] {
+  cursor: not-allowed;
+}

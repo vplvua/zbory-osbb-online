@@ -4,6 +4,7 @@ import type { SVGProps } from 'react';
 import { useActionState } from 'react';
 import { ConfirmSubmitButton } from '@/components/confirm-submit-button';
 import { ErrorAlert } from '@/components/ui/error-alert';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { SheetFormState } from '@/app/sheets/actions';
 
 const initialState: SheetFormState = {};
@@ -27,10 +28,10 @@ function TrashIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 export default function SheetDeleteForm({ sheetId, redirectTo, action }: SheetDeleteFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="space-y-1">
+    <form action={formAction} className="space-y-1" data-submitting={isPending ? 'true' : 'false'}>
       <input type="hidden" name="sheetId" value={sheetId} />
       {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
       {state.error ? <ErrorAlert size="compact">{state.error}</ErrorAlert> : null}
@@ -39,9 +40,11 @@ export default function SheetDeleteForm({ sheetId, redirectTo, action }: SheetDe
         variant="destructive"
         className="h-8 px-3 text-xs"
         confirmMessage="Ви впевнені, що хочете видалити цей листок опитування?"
+        pendingLabel="Видалення..."
+        disabled={isPending}
       >
-        <TrashIcon className="h-4 w-4" />
-        Видалити
+        {isPending ? <LoadingSpinner className="h-4 w-4" /> : <TrashIcon className="h-4 w-4" />}
+        {isPending ? 'Видалення...' : 'Видалити'}
       </ConfirmSubmitButton>
     </form>
   );

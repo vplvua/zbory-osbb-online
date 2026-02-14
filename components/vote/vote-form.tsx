@@ -1,20 +1,36 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useRef, useState } from 'react';
 import type { Vote } from '@prisma/client';
 import { Button } from '@/components/ui/button';
+import { ErrorAlert } from '@/components/ui/error-alert';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { VoteSheetQuestionDto } from '@/lib/vote/types';
 
 type VoteFormProps = {
+  token: string;
   questions: VoteSheetQuestionDto[];
   disabled: boolean;
 };
 
-export default function VoteForm({ questions, disabled }: VoteFormProps) {
+type VoteSubmitResult = {
+  ok: boolean;
+  message?: string;
+  redirectUrl?: string;
+  signRedirectUrl?: string;
+  signUrl?: string;
+};
+
+export default function VoteForm({ token, questions, disabled }: VoteFormProps) {
+  const router = useRouter();
+  const submitLockRef = useRef(false);
   const [votes, setVotes] = useState<Record<string, Vote | undefined>>(() =>
     Object.fromEntries(questions.map((question) => [question.id, question.vote ?? undefined])),
   );
   const [isConsentChecked, setIsConsentChecked] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isComplete = useMemo(() => {
     if (!isConsentChecked) {
@@ -24,9 +40,54 @@ export default function VoteForm({ questions, disabled }: VoteFormProps) {
     return questions.every((question) => Boolean(votes[question.id]));
   }, [isConsentChecked, questions, votes]);
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (disabled || isSubmitting || submitLockRef.current || !isComplete) {
+      return;
+    }
+
+    submitLockRef.current = true;
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/vote/${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answers: questions.map((question) => ({
+            questionId: question.id,
+            vote: votes[question.id],
+          })),
+          consent: isConsentChecked,
+        }),
+      });
+
+      const result = (await response.json()) as VoteSubmitResult;
+
+      if (!response.ok || !result.ok) {
+        setError(result.message ?? 'Не вдалося надіслати голос.');
+        return;
+      }
+
+      const redirectUrl = result.redirectUrl ?? result.signRedirectUrl ?? result.signUrl;
+      if (redirectUrl) {
+        window.location.assign(redirectUrl);
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError('Сталася помилка під час надсилання голосу. Спробуйте ще раз.');
+    } finally {
+      submitLockRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
-      <fieldset className="space-y-6" disabled={disabled}>
+    <form className="space-y-6" onSubmit={handleSubmit}>
+      <fieldset className="space-y-6" disabled={disabled || isSubmitting}>
         {questions.map((question, index) => (
           <article key={question.id} className="border-border rounded-lg border p-4">
             <p className="text-muted-foreground text-sm">
@@ -81,12 +142,15 @@ export default function VoteForm({ questions, disabled }: VoteFormProps) {
           Увага! Після підписання зміни неможливі.
         </p>
 
+        {error ? <ErrorAlert>{error}</ErrorAlert> : null}
+
         <div className="space-y-2">
-          <Button type="submit" disabled={!isComplete || disabled}>
-            Підписати електронним підписом
+          <Button type="submit" disabled={!isComplete || disabled || isSubmitting}>
+            {isSubmitting ? <LoadingSpinner className="h-4 w-4" /> : null}
+            {isSubmitting ? 'Переходимо до підпису...' : 'Підписати електронним підписом'}
           </Button>
           <p className="text-muted-foreground text-xs">
-            Підписання через Dubidoc буде додано на наступному етапі.
+            Після надсилання голосу відкриється підпис або оновиться статус листка.
           </p>
         </div>
       </fieldset>

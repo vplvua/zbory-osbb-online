@@ -1,14 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
 
 export default function LoginForm() {
   const router = useRouter();
+  const requestInFlightRef = useRef(false);
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +18,11 @@ export default function LoginForm() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (requestInFlightRef.current || isLoading) {
+      return;
+    }
+
+    requestInFlightRef.current = true;
     setError(null);
     setIsLoading(true);
 
@@ -37,6 +44,7 @@ export default function LoginForm() {
     } catch {
       setError('Сталася помилка. Спробуйте ще раз.');
     } finally {
+      requestInFlightRef.current = false;
       setIsLoading(false);
     }
   };
@@ -44,16 +52,19 @@ export default function LoginForm() {
   return (
     <>
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <Label htmlFor="phone">Ваш номер телефону</Label>
-          <PhoneInput id="phone" name="phone" value={phone} onValueChange={setPhone} required />
-        </div>
+        <fieldset disabled={isLoading} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="phone">Ваш номер телефону</Label>
+            <PhoneInput id="phone" name="phone" value={phone} onValueChange={setPhone} required />
+          </div>
 
-        {error ? <ErrorAlert>{error}</ErrorAlert> : null}
+          {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 
-        <Button className="w-full" type="submit" disabled={isLoading || !isPhoneComplete}>
-          {isLoading ? 'Надсилання...' : 'Надіслати код'}
-        </Button>
+          <Button className="w-full" type="submit" disabled={isLoading || !isPhoneComplete}>
+            {isLoading ? <LoadingSpinner className="h-4 w-4" /> : null}
+            {isLoading ? 'Надсилання...' : 'Надіслати код'}
+          </Button>
+        </fieldset>
       </form>
     </>
   );

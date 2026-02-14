@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type ProtocolEditSaveButtonProps = {
   formId: string;
@@ -19,6 +21,7 @@ function buildFormSnapshot(form: HTMLFormElement): string {
 export default function ProtocolEditSaveButton({ formId }: ProtocolEditSaveButtonProps) {
   const initialSnapshotRef = useRef<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const isPending = useExternalFormPending(formId);
 
   useEffect(() => {
     const form = document.getElementById(formId);
@@ -52,8 +55,9 @@ export default function ProtocolEditSaveButton({ formId }: ProtocolEditSaveButto
   }, [formId]);
 
   return (
-    <Button type="submit" form={formId} disabled={!isDirty}>
-      Зберегти
+    <Button type="submit" form={formId} disabled={!isDirty || isPending}>
+      {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+      {isPending ? 'Збереження...' : 'Зберегти'}
     </Button>
   );
 }

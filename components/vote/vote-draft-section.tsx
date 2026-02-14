@@ -7,6 +7,7 @@ import VoteForm from '@/components/vote/vote-form';
 import type { VoteSheetQuestionDto } from '@/lib/vote/types';
 
 type VoteDraftSectionProps = {
+  token: string;
   createdAt: string;
   expiresAt: string;
   questions: VoteSheetQuestionDto[];
@@ -14,6 +15,7 @@ type VoteDraftSectionProps = {
 };
 
 export default function VoteDraftSection({
+  token,
   createdAt,
   expiresAt,
   questions,
@@ -27,7 +29,7 @@ export default function VoteDraftSection({
       {isExpired ? (
         <ErrorAlert>Термін голосування завершено. Надсилання голосу недоступне.</ErrorAlert>
       ) : (
-        <VoteForm questions={questions} disabled={false} />
+        <VoteForm token={token} questions={questions} disabled={false} />
       )}
     </section>
   );

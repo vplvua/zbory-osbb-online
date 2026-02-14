@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SheetStatus } from '@prisma/client';
+import SheetDownloadActions from '@/app/sheets/_components/sheet-download-actions';
 import SheetDeleteForm from '@/app/sheets/_components/sheet-delete-form';
 import SheetPublicLinkActions from '@/app/sheets/_components/sheet-public-link-actions';
 import SheetsFilters from '@/app/sheets/_components/sheets-filters';
@@ -44,39 +45,6 @@ function getDisplaySheetStatus(status: SheetStatus, expiresAt: Date): SheetStatu
   }
 
   return status;
-}
-
-function PdfFileIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <path
-        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path d="M14 2v5h5" stroke="currentColor" strokeWidth="2" />
-      <path d="M8 15h8M8 18h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function PdfVisualIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <path
-        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path d="M14 2v5h5" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M8 14.5c.8-1.1 2.1-2 4-2s3.2.9 4 2c-.8 1.1-2.1 2-4 2s-3.2-.9-4-2Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <circle cx="12" cy="14.5" r="1" fill="currentColor" />
-    </svg>
-  );
 }
 
 type SheetsPageProps = {
@@ -464,7 +432,7 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
 
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Завантаження</p>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="space-y-2">
                           {sheet.pdfUploadPending ? (
                             <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-800">
                               PDF формується
@@ -475,34 +443,11 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                               Є помилка PDF
                             </span>
                           ) : null}
-                          {hasPdf ? (
-                            <>
-                              <a
-                                href={`${downloadBasePath}/original`}
-                                className="border-border bg-surface hover:bg-surface-muted inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold"
-                              >
-                                <PdfFileIcon className="h-4 w-4" />
-                                Оригінал PDF
-                              </a>
-                              <a
-                                href={`${downloadBasePath}/visualization`}
-                                className="border-border bg-surface hover:bg-surface-muted inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold"
-                              >
-                                <PdfVisualIcon className="h-4 w-4" />
-                                Візуалізація PDF
-                              </a>
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">PDF недоступний</span>
-                          )}
-                          {isSigned ? (
-                            <a
-                              href={`${downloadBasePath}/signed`}
-                              className="text-brand text-xs underline-offset-4 hover:underline"
-                            >
-                              Підписаний .p7s
-                            </a>
-                          ) : null}
+                          <SheetDownloadActions
+                            downloadBasePath={downloadBasePath}
+                            hasPdf={hasPdf}
+                            isSigned={isSigned}
+                          />
                         </div>
                       </div>
 

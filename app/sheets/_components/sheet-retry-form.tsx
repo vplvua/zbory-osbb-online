@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { SheetFormState } from '@/app/sheets/actions';
 
 const initialState: SheetFormState = {};
@@ -14,15 +15,16 @@ type SheetRetryFormProps = {
 };
 
 export default function SheetRetryForm({ sheetId, redirectTo, action }: SheetRetryFormProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="space-y-1">
+    <form action={formAction} className="space-y-1" data-submitting={isPending ? 'true' : 'false'}>
       <input type="hidden" name="sheetId" value={sheetId} />
       {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
       {state.error ? <ErrorAlert size="compact">{state.error}</ErrorAlert> : null}
-      <Button type="submit" variant="outline" className="h-8 px-3 text-xs">
-        Повторити PDF
+      <Button type="submit" variant="outline" className="h-8 px-3 text-xs" disabled={isPending}>
+        {isPending ? <LoadingSpinner className="h-3.5 w-3.5" /> : null}
+        {isPending ? 'Запускаємо...' : 'Повторити PDF'}
       </Button>
     </form>
   );
