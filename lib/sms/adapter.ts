@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
+import { assertIntegrationEnvGuardrails, isConfiguredEnvValue } from '@/lib/integrations/env-guard';
 import { retryPresets, withRetry } from '@/lib/retry/withRetry';
 
 export interface SmsService {
   sendCode(phone: string, code: string): Promise<boolean>;
 }
 
-const ENV_PLACEHOLDER_PREFIX = 'replace-with-';
 const TURBOSMS_BASE_URL = 'https://api.turbosms.ua';
 const TURBOSMS_SEND_PATH = '/message/send.json';
 
@@ -241,12 +241,6 @@ function assertSuccessfulProviderResponse(payload: unknown): void {
   }
 }
 
-function hasEnvValue(value: string | undefined): boolean {
-  return Boolean(
-    value && value.trim().length > 0 && !value.trim().startsWith(ENV_PLACEHOLDER_PREFIX),
-  );
-}
-
 function assertSmsPayload(phone: string, code: string): void {
   if (!phone.trim()) {
     throw new PermanentError('[TurboSMS] Phone is required.', {
@@ -376,7 +370,9 @@ export class DevMockSmsAdapter implements SmsService {
 }
 
 export function getSmsAdapter(): SmsService {
-  if (hasEnvValue(process.env.TURBOSMS_API_KEY)) {
+  assertIntegrationEnvGuardrails();
+
+  if (isConfiguredEnvValue(process.env.TURBOSMS_API_KEY)) {
     return new TurboSmsAdapter();
   }
 
