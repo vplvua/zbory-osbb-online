@@ -1,12 +1,11 @@
 import { MockDocumentSigningService } from '@/lib/dubidoc/mock-provider';
 import { DubidocApiSigningService } from '@/lib/dubidoc/real-provider';
+import { assertIntegrationEnvGuardrails, isConfiguredEnvValue } from '@/lib/integrations/env-guard';
 import type {
   DocumentCreateResult,
   DocumentParticipantInput,
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
-
-const ENV_PLACEHOLDER_PREFIX = 'replace-with-';
 
 export interface DocumentSigningService {
   createDocument(fileBuffer: Uint8Array, title: string): Promise<DocumentCreateResult>;
@@ -20,17 +19,16 @@ export interface DocumentSigningService {
   downloadSigned(documentId: string): Promise<Uint8Array>;
 }
 
-function hasEnvValue(value: string | undefined): boolean {
-  return Boolean(
-    value && value.trim().length > 0 && !value.trim().startsWith(ENV_PLACEHOLDER_PREFIX),
+export function isDubidocConfigured(): boolean {
+  return (
+    isConfiguredEnvValue(process.env.DUBIDOC_API_KEY) &&
+    isConfiguredEnvValue(process.env.DUBIDOC_ORG_ID)
   );
 }
 
-export function isDubidocConfigured(): boolean {
-  return hasEnvValue(process.env.DUBIDOC_API_KEY) && hasEnvValue(process.env.DUBIDOC_ORG_ID);
-}
-
 export function getDocumentSigningService(): DocumentSigningService {
+  assertIntegrationEnvGuardrails();
+
   if (isDubidocConfigured()) {
     const callbackUrl =
       process.env.DUBIDOC_CALLBACK_URL?.trim() ||

@@ -76,7 +76,8 @@ export async function POST(request: Request) {
           message: 'Не вдалося надіслати SMS. Спробуйте пізніше.',
         });
       }
-    } catch {
+    } catch (error) {
+      console.error('[auth:request-code] sms send failed', { phone, error });
       await prisma.smsOtp.delete({ where: { id: otp.id } });
       return apiErrorResponse({
         status: 500,
