@@ -333,9 +333,13 @@ Example `vercel.json` snippet:
 }
 ```
 
-## SMS adapter (dev)
+## SMS adapter
 
-If `TURBOSMS_API_KEY` is not set, the SMS adapter uses a dev mock that logs codes to the console and returns success. Use:
+If `TURBOSMS_API_KEY` is not set (or placeholder), the SMS adapter uses a dev mock that logs codes to the console and returns success.
+If `TURBOSMS_API_KEY` is configured, the app uses real TurboSMS HTTP API (`POST https://api.turbosms.ua/message/send.json`) with `Authorization: Bearer <token>`.
+In real mode, `TURBOSMS_SENDER` must be configured.
+
+Use:
 
 ```ts
 import { getSmsAdapter } from '@/lib/sms/adapter';
@@ -445,21 +449,21 @@ This project is deployed as a standard Next.js app on Vercel.
 
 Set these in `Project -> Settings -> Environment Variables`.
 
-| Variable                 | Required               | Recommended scope                              | Notes                                                                                                     |
-| ------------------------ | ---------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Yes                    | Production + Preview                           | Main runtime DB URL used by Prisma client.                                                                |
-| `POSTGRES_URL`           | Yes (for migrations)   | Production + Preview                           | Direct DB URL for Prisma migrations (`directUrl`).                                                        |
-| `NEXTAUTH_SECRET`        | Yes                    | Production (+ Preview if auth is tested there) | Required in production; use a long random secret. Mark as Sensitive.                                      |
-| `NEXTAUTH_URL`           | Yes                    | Production                                     | Public app URL, for example `https://zbory-osbb-online.vercel.app`.                                       |
-| `ENCRYPTION_KEY`         | Yes                    | Production + Preview                           | App-level encryption key (32+ chars).                                                                     |
-| `DUBIDOC_API_KEY`        | Optional               | Production + Preview                           | Required only for real Dubidoc mode. Keep empty/placeholder for mock mode.                                |
-| `DUBIDOC_ORG_ID`         | Optional               | Production + Preview                           | Required only for real Dubidoc mode.                                                                      |
-| `DUBIDOC_CALLBACK_URL`   | Optional               | Production + Preview                           | If empty, app falls back to `${NEXTAUTH_URL}/api/webhooks/dubidoc`.                                       |
-| `DUBIDOC_WEBHOOK_SECRET` | Optional (recommended) | Production + Preview                           | If set, Dubidoc must send `x-dubidoc-webhook-secret`.                                                     |
-| `TURBOSMS_API_KEY`       | Optional               | Production + Preview                           | Real TurboSMS adapter is not implemented yet; keep empty/placeholder (`replace-with-*`) to use mock mode. |
-| `TURBOSMS_SENDER`        | Optional               | Production + Preview                           | Sender name for TurboSMS when real mode is implemented.                                                   |
-| `OPENAI_API_KEY`         | Optional               | Production + Preview                           | Stage 2 only.                                                                                             |
-| `CRON_SECRET`            | Optional (recommended) | Production + Preview                           | Protects `/api/cron/deferred-queue` endpoint.                                                             |
+| Variable                 | Required               | Recommended scope                              | Notes                                                                                                                      |
+| ------------------------ | ---------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Yes                    | Production + Preview                           | Main runtime DB URL used by Prisma client.                                                                                 |
+| `POSTGRES_URL`           | Yes (for migrations)   | Production + Preview                           | Direct DB URL for Prisma migrations (`directUrl`).                                                                         |
+| `NEXTAUTH_SECRET`        | Yes                    | Production (+ Preview if auth is tested there) | Required in production; use a long random secret. Mark as Sensitive.                                                       |
+| `NEXTAUTH_URL`           | Yes                    | Production                                     | Public app URL, for example `https://zbory-osbb-online.vercel.app`.                                                        |
+| `ENCRYPTION_KEY`         | Yes                    | Production + Preview                           | App-level encryption key (32+ chars).                                                                                      |
+| `DUBIDOC_API_KEY`        | Optional               | Production + Preview                           | Required only for real Dubidoc mode. Keep empty/placeholder for mock mode.                                                 |
+| `DUBIDOC_ORG_ID`         | Optional               | Production + Preview                           | Required only for real Dubidoc mode.                                                                                       |
+| `DUBIDOC_CALLBACK_URL`   | Optional               | Production + Preview                           | If empty, app falls back to `${NEXTAUTH_URL}/api/webhooks/dubidoc`.                                                        |
+| `DUBIDOC_WEBHOOK_SECRET` | Optional (recommended) | Production + Preview                           | If set, Dubidoc must send `x-dubidoc-webhook-secret`.                                                                      |
+| `TURBOSMS_API_KEY`       | Optional               | Production + Preview                           | Enables real TurboSMS mode when non-empty and not placeholder. Keep empty/placeholder (`replace-with-*`) to use mock mode. |
+| `TURBOSMS_SENDER`        | Optional               | Production + Preview                           | Sender name for TurboSMS in real mode.                                                                                     |
+| `OPENAI_API_KEY`         | Optional               | Production + Preview                           | Stage 2 only.                                                                                                              |
+| `CRON_SECRET`            | Optional (recommended) | Production + Preview                           | Protects `/api/cron/deferred-queue` endpoint.                                                                              |
 
 Notes:
 
