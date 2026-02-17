@@ -3,22 +3,32 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 
 const webhookRoleSchema = z.enum(['OWNER', 'ORGANIZER']);
+const signaturePayloadSchema = z
+  .object({
+    signedAt: z.string().trim().min(1).optional(),
+    email: z.string().trim().optional().nullable(),
+  })
+  .passthrough();
 
 const dubidocWebhookPayloadSchema = z
   .object({
     eventId: z.string().trim().min(1).optional(),
     eventType: z.string().trim().min(1).optional(),
     type: z.string().trim().min(1).optional(),
+    action: z.string().trim().min(1).optional(),
     documentId: z.string().trim().min(1).optional(),
     occurredAt: z.string().trim().min(1).optional(),
     participantRole: webhookRoleSchema.optional(),
+    payload: signaturePayloadSchema.optional(),
     data: z
       .object({
         eventType: z.string().trim().min(1).optional(),
         type: z.string().trim().min(1).optional(),
+        action: z.string().trim().min(1).optional(),
         documentId: z.string().trim().min(1).optional(),
         occurredAt: z.string().trim().min(1).optional(),
         participantRole: webhookRoleSchema.optional(),
+        payload: signaturePayloadSchema.optional(),
       })
       .passthrough()
       .optional(),
@@ -27,7 +37,7 @@ const dubidocWebhookPayloadSchema = z
 
 export type DubidocWebhookPayload = z.infer<typeof dubidocWebhookPayloadSchema>;
 
-export type DubidocWebhookAction = 'OWNER_SIGNED' | 'ORGANIZER_SIGNED';
+export type DubidocWebhookAction = 'OWNER_SIGNED' | 'ORGANIZER_SIGNED' | 'SIGNATURE';
 
 export type DubidocWebhookEvent = {
   eventId: string | null;
@@ -35,6 +45,7 @@ export type DubidocWebhookEvent = {
   documentId: string;
   action: DubidocWebhookAction;
   occurredAt: Date;
+  participantEmail: string | null;
 };
 
 type ParseWebhookResult =
@@ -114,7 +125,16 @@ function mapToAction(
     }
   }
 
+  if (eventName === 'SIGNATURE') {
+    return 'SIGNATURE';
+  }
+
   return null;
+}
+
+function normalizeEmail(value?: string | null): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized ? normalized : null;
 }
 
 export function verifyDubidocWebhookRequest(request: Request): WebhookVerificationResult {
@@ -139,12 +159,22 @@ export function parseDubidocWebhookPayload(payload: unknown): ParseWebhookResult
   }
 
   const raw = parsed.data;
-  const sourceEventType = raw.eventType ?? raw.type ?? raw.data?.eventType ?? raw.data?.type;
+  const sourceEventType =
+    raw.eventType ??
+    raw.type ??
+    raw.action ??
+    raw.data?.eventType ??
+    raw.data?.type ??
+    raw.data?.action;
   const documentId = raw.documentId ?? raw.data?.documentId;
   const participantRole = raw.participantRole ?? raw.data?.participantRole;
+  const participantEmail = normalizeEmail(raw.payload?.email ?? raw.data?.payload?.email);
 
   if (!sourceEventType || !documentId) {
-    return { ok: false, message: 'Webhook payload має містити eventType/type та documentId.' };
+    return {
+      ok: false,
+      message: 'Webhook payload має містити eventType/type/action та documentId.',
+    };
   }
 
   const normalizedName = normalizeEventName(sourceEventType);
@@ -160,7 +190,13 @@ export function parseDubidocWebhookPayload(payload: unknown): ParseWebhookResult
       sourceType: sourceEventType,
       documentId,
       action,
-      occurredAt: parseOccurredAt(raw.occurredAt ?? raw.data?.occurredAt),
+      occurredAt: parseOccurredAt(
+        raw.occurredAt ??
+          raw.data?.occurredAt ??
+          raw.payload?.signedAt ??
+          raw.data?.payload?.signedAt,
+      ),
+      participantEmail,
     },
   };
 }
@@ -175,8 +211,49 @@ async function readSheetByDocumentId(documentId: string) {
       status: true,
       ownerSignedAt: true,
       organizerSignedAt: true,
+      owner: {
+        select: {
+          email: true,
+        },
+      },
+      protocol: {
+        select: {
+          osbb: {
+            select: {
+              organizerEmail: true,
+            },
+          },
+        },
+      },
     },
   });
+}
+
+function inferSignatureAction(
+  sheet: NonNullable<Awaited<ReturnType<typeof readSheetByDocumentId>>>,
+  event: DubidocWebhookEvent,
+): 'OWNER_SIGNED' | 'ORGANIZER_SIGNED' {
+  const ownerEmail = normalizeEmail(sheet.owner.email);
+  const organizerEmail = normalizeEmail(sheet.protocol.osbb.organizerEmail);
+  const participantEmail = normalizeEmail(event.participantEmail);
+
+  if (participantEmail && ownerEmail && participantEmail === ownerEmail) {
+    return 'OWNER_SIGNED';
+  }
+
+  if (participantEmail && organizerEmail && participantEmail === organizerEmail) {
+    return 'ORGANIZER_SIGNED';
+  }
+
+  if (!sheet.ownerSignedAt) {
+    return 'OWNER_SIGNED';
+  }
+
+  if (!sheet.organizerSignedAt) {
+    return 'ORGANIZER_SIGNED';
+  }
+
+  return 'ORGANIZER_SIGNED';
 }
 
 async function applyOwnerSigned(event: DubidocWebhookEvent): Promise<ProcessWebhookResult> {
@@ -228,6 +305,9 @@ async function applyOwnerSigned(event: DubidocWebhookEvent): Promise<ProcessWebh
     data: {
       ownerSignedAt: event.occurredAt,
       status: SheetStatus.PENDING_ORGANIZER,
+      dubidocSignPending: false,
+      dubidocLastError: null,
+      dubidocLastCheckedAt: event.occurredAt,
     },
   });
 
@@ -307,6 +387,9 @@ async function applyOrganizerSigned(event: DubidocWebhookEvent): Promise<Process
       ownerSignedAt: sheet.ownerSignedAt ?? event.occurredAt,
       organizerSignedAt: event.occurredAt,
       status: SheetStatus.SIGNED,
+      dubidocSignPending: false,
+      dubidocLastError: null,
+      dubidocLastCheckedAt: event.occurredAt,
     },
   });
 
@@ -343,5 +426,27 @@ export async function processDubidocWebhookEvent(
     return applyOwnerSigned(event);
   }
 
-  return applyOrganizerSigned(event);
+  if (event.action === 'ORGANIZER_SIGNED') {
+    return applyOrganizerSigned(event);
+  }
+
+  const sheet = await readSheetByDocumentId(event.documentId);
+  if (!sheet) {
+    return {
+      ok: true,
+      processed: false,
+      duplicate: false,
+      ignored: true,
+      message: 'Листок для документа не знайдено.',
+      sheetId: null,
+      status: null,
+    };
+  }
+
+  const inferredAction = inferSignatureAction(sheet, event);
+  if (inferredAction === 'OWNER_SIGNED') {
+    return applyOwnerSigned({ ...event, action: 'OWNER_SIGNED' });
+  }
+
+  return applyOrganizerSigned({ ...event, action: 'ORGANIZER_SIGNED' });
 }

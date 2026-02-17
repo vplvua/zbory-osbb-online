@@ -1,14 +1,29 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { Prisma, SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
+import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
 import { calculateSheetExpiresAt } from '@/lib/sheet/expiry';
+import { DEFERRED_QUEUE_JOB_TYPES, enqueueDeferredJob } from '@/lib/queue/deferred-queue';
 import { generateAndStoreSheetPdf } from '@/lib/sheet/pdf-processing';
 import { sheetBulkCreateSchema } from '@/lib/sheet/validation';
 import { generatePublicToken } from '@/lib/tokens';
 import { resolveSelectedOsbb } from '@/lib/osbb/selected-osbb';
 import { redirectWithToast } from '@/lib/toast/server';
+import {
+  ensureSheetSigningRedirectUrl,
+  ORGANIZER_EMAIL_REQUIRED_ERROR,
+  OWNER_EMAIL_REQUIRED_ERROR,
+  refreshSheetSigningStatusFromDubidoc,
+  SIGNERS_EMAIL_CONFLICT_ERROR,
+} from '@/lib/vote/signing';
+import {
+  clearSheetDubidocSignState,
+  markSheetDubidocSignFailed,
+  markSheetDubidocSignPending,
+} from '@/lib/vote/dubidoc-sign-state';
 
 export type SheetFormState = {
   error?: string;
@@ -16,6 +31,14 @@ export type SheetFormState = {
 
 const PUBLIC_TOKEN_RETRY_LIMIT = 3;
 const DEFAULT_SHEETS_REDIRECT_PATH = '/sheets';
+
+function isDubidocNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error)) {
+    return false;
+  }
+
+  return (error as { code?: unknown }).code === 'DUBIDOC_HTTP_404';
+}
 
 function getSheetFormData(formData: FormData) {
   const ownerIds = Array.from(
@@ -119,6 +142,33 @@ async function createSheetWithUniqueToken(data: {
 async function getSelectedOsbbId(userId: string): Promise<string | null> {
   const selectedState = await resolveSelectedOsbb(userId);
   return selectedState.selectedOsbb?.id ?? null;
+}
+
+async function getSheetForSelectedOsbb(sheetId: string, selectedOsbbId: string, userId: string) {
+  return prisma.sheet.findFirst({
+    where: {
+      id: sheetId,
+      protocol: {
+        osbbId: selectedOsbbId,
+        osbb: {
+          userId,
+          isDeleted: false,
+        },
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+      ownerSignedAt: true,
+      organizerSignedAt: true,
+      dubidocDocumentId: true,
+      dubidocSignPending: true,
+      dubidocLastError: true,
+      pdfFileUrl: true,
+      pdfUploadPending: true,
+      errorPending: true,
+    },
+  });
 }
 
 export async function createSheetAction(
@@ -315,6 +365,153 @@ export async function retrySheetPdfAction(
   });
 }
 
+export async function organizerSignSheetAction(
+  _: SheetFormState,
+  formData: FormData,
+): Promise<SheetFormState> {
+  const session = await getSessionPayload();
+  if (!session) {
+    return { error: 'Потрібна авторизація.' };
+  }
+
+  const selectedOsbbId = await getSelectedOsbbId(session.sub);
+  if (!selectedOsbbId) {
+    return { error: 'Оберіть ОСББ на дашборді.' };
+  }
+
+  const sheetId = String(formData.get('sheetId') ?? '');
+  if (!sheetId) {
+    return { error: 'Листок не знайдено.' };
+  }
+
+  const sheet = await getSheetForSelectedOsbb(sheetId, selectedOsbbId, session.sub);
+  if (!sheet) {
+    return { error: 'Листок не знайдено.' };
+  }
+
+  if (
+    sheet.status !== SheetStatus.PENDING_ORGANIZER ||
+    sheet.ownerSignedAt === null ||
+    sheet.organizerSignedAt !== null
+  ) {
+    return {
+      error:
+        'Підпис відповідальної особи доступний лише для листків зі статусом «Очікує підпису відповідальної особи».',
+    };
+  }
+
+  if (sheet.dubidocSignPending) {
+    return { error: 'Підготовка підписання вже триває. Спробуйте ще раз за кілька секунд.' };
+  }
+
+  await markSheetDubidocSignPending(sheet.id);
+
+  let signingUrl: string | null = null;
+  try {
+    signingUrl = await ensureSheetSigningRedirectUrl(sheet.id);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === OWNER_EMAIL_REQUIRED_ERROR ||
+        error.name === ORGANIZER_EMAIL_REQUIRED_ERROR ||
+        error.name === SIGNERS_EMAIL_CONFLICT_ERROR)
+    ) {
+      const message =
+        error.name === SIGNERS_EMAIL_CONFLICT_ERROR
+          ? 'Email співвласника та уповноваженої особи мають відрізнятися.'
+          : 'Налаштування підписання неповні. Перевірте email у налаштуваннях ОСББ.';
+      await markSheetDubidocSignFailed(sheet.id, message);
+      return { error: message };
+    }
+
+    console.error('[sheets:organizer-sign] failed to prepare Dubidoc signing link', {
+      sheetId: sheet.id,
+      error,
+    });
+
+    const message = 'Сервіс підписання тимчасово недоступний. Спробуйте ще раз.';
+    await markSheetDubidocSignFailed(sheet.id, message);
+    return { error: message };
+  }
+
+  if (!signingUrl) {
+    const message = 'Не вдалося підготувати документ для підписання. Спробуйте ще раз.';
+    await markSheetDubidocSignFailed(sheet.id, message);
+    return { error: message };
+  }
+
+  await clearSheetDubidocSignState(sheet.id);
+  redirect(signingUrl);
+}
+
+export async function refreshSheetSigningStatusAction(
+  _: SheetFormState,
+  formData: FormData,
+): Promise<SheetFormState> {
+  const session = await getSessionPayload();
+  if (!session) {
+    return { error: 'Потрібна авторизація.' };
+  }
+
+  const selectedOsbbId = await getSelectedOsbbId(session.sub);
+  if (!selectedOsbbId) {
+    return { error: 'Оберіть ОСББ на дашборді.' };
+  }
+
+  const sheetId = String(formData.get('sheetId') ?? '');
+  if (!sheetId) {
+    return { error: 'Листок не знайдено.' };
+  }
+
+  const sheet = await getSheetForSelectedOsbb(sheetId, selectedOsbbId, session.sub);
+  if (!sheet) {
+    return { error: 'Листок не знайдено.' };
+  }
+
+  if (sheet.status !== SheetStatus.PENDING_ORGANIZER) {
+    return {
+      error:
+        'Оновлення статусу доступне лише для листків зі статусом «Очікує підпису відповідальної особи».',
+    };
+  }
+
+  if (!sheet.dubidocDocumentId) {
+    return { error: 'Документ Dubidoc ще не створено. Спочатку запустіть підписання.' };
+  }
+
+  await markSheetDubidocSignPending(sheet.id);
+
+  try {
+    const syncResult = await refreshSheetSigningStatusFromDubidoc(sheet.id);
+    await clearSheetDubidocSignState(sheet.id);
+
+    if (!syncResult) {
+      return { error: 'Документ Dubidoc ще не створено. Спочатку запустіть підписання.' };
+    }
+
+    const message =
+      syncResult.status === 'ORGANIZER_SIGNED'
+        ? 'Статус оновлено: документ підписано обома сторонами.'
+        : syncResult.status === 'OWNER_SIGNED'
+          ? 'Статус підтверджено: очікуємо підпису відповідальної особи.'
+          : 'Dubidoc ще не зафіксував новий підпис. Спробуйте оновити статус пізніше.';
+
+    return redirectWithToast(getSheetsRedirectPath(formData), {
+      type: syncResult.status === 'ORGANIZER_SIGNED' ? 'success' : 'info',
+      message,
+    });
+  } catch (error) {
+    console.error('[sheets:signing-refresh] failed to sync Dubidoc status', {
+      sheetId: sheet.id,
+      error,
+    });
+
+    const message = 'Не вдалося оновити статус підписання. Спробуйте ще раз.';
+    await markSheetDubidocSignFailed(sheet.id, message);
+    return { error: message };
+  }
+}
+
 export async function deleteSheetAction(
   _: SheetFormState,
   formData: FormData,
@@ -350,6 +547,7 @@ export async function deleteSheetAction(
       status: true,
       ownerSignedAt: true,
       organizerSignedAt: true,
+      dubidocDocumentId: true,
     },
   });
 
@@ -365,12 +563,55 @@ export async function deleteSheetAction(
     return { error: 'Видалення дозволено тільки для чернеток/прострочених без підписів.' };
   }
 
+  let revokeQueued = false;
+  let revokeQueueFailed = false;
+  if (sheet.status === SheetStatus.DRAFT && sheet.dubidocDocumentId) {
+    const signingService = getDocumentSigningService();
+
+    try {
+      await signingService.revokePublicLinks(sheet.dubidocDocumentId);
+    } catch (error) {
+      if (!isDubidocNotFoundError(error)) {
+        console.warn('[sheets:delete] failed to revoke Dubidoc public links, queueing retry', {
+          sheetId: sheet.id,
+          documentId: sheet.dubidocDocumentId,
+          error,
+        });
+
+        try {
+          await enqueueDeferredJob({
+            type: DEFERRED_QUEUE_JOB_TYPES.DUBIDOC_REVOKE_PUBLIC_LINKS,
+            payload: {
+              sheetId: sheet.id,
+              documentId: sheet.dubidocDocumentId,
+              requestedByUserId: session.sub,
+            } as Prisma.InputJsonValue,
+          });
+          revokeQueued = true;
+        } catch (queueError) {
+          revokeQueueFailed = true;
+          console.error('[sheets:delete] failed to enqueue Dubidoc revoke job', {
+            sheetId: sheet.id,
+            documentId: sheet.dubidocDocumentId,
+            queueError,
+          });
+        }
+      }
+    }
+  }
+
   await prisma.sheet.delete({
     where: { id: sheet.id },
   });
 
+  const message = revokeQueueFailed
+    ? 'Листок опитування видалено. Не вдалося запланувати скасування публічних посилань Dubidoc — зверніться до підтримки.'
+    : revokeQueued
+      ? 'Листок опитування видалено. Скасування публічних посилань Dubidoc заплановано та буде повторено автоматично.'
+      : 'Листок опитування успішно видалено.';
+
   return redirectWithToast(getSheetsRedirectPath(formData), {
-    type: 'success',
-    message: 'Листок опитування успішно видалено.',
+    type: revokeQueued || revokeQueueFailed ? 'info' : 'success',
+    message,
   });
 }

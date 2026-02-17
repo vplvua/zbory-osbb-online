@@ -1,6 +1,7 @@
 import { type DeferredQueue, type Prisma } from '@prisma/client';
+import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
 import { prisma } from '@/lib/db/prisma';
-import { getBackoffDelayMs, type RetryBackoffOptions } from '@/lib/retry/withRetry';
+import { getBackoffDelayMs, retryPresets, type RetryBackoffOptions } from '@/lib/retry/withRetry';
 
 export const DEFERRED_QUEUE_STATUS = {
   PENDING: 'PENDING',
@@ -14,6 +15,7 @@ export type DeferredQueueStatus =
 
 export const DEFERRED_QUEUE_JOB_TYPES = {
   NOOP: 'NOOP',
+  DUBIDOC_REVOKE_PUBLIC_LINKS: 'DUBIDOC_REVOKE_PUBLIC_LINKS',
 } as const;
 
 export type DeferredQueueJobType =
@@ -51,10 +53,37 @@ export type ProcessDeferredQueueResult = {
   skipped: number;
 };
 
+function getDubidocDocumentIdFromPayload(payload: Prisma.JsonValue): string | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return null;
+  }
+
+  const value = (payload as { documentId?: unknown }).documentId;
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 const DEFAULT_DEFINITIONS: DeferredQueueDefinitions = {
   [DEFERRED_QUEUE_JOB_TYPES.NOOP]: {
     maxAttempts: 1,
     handler: async () => {},
+  },
+  [DEFERRED_QUEUE_JOB_TYPES.DUBIDOC_REVOKE_PUBLIC_LINKS]: {
+    maxAttempts: retryPresets.dubidoc.maxAttempts,
+    backoff: retryPresets.dubidoc.backoff,
+    handler: async (job) => {
+      const documentId = getDubidocDocumentIdFromPayload(job.payload);
+      if (!documentId) {
+        return;
+      }
+
+      const signingService = getDocumentSigningService();
+      await signingService.revokePublicLinks(documentId);
+    },
   },
 };
 

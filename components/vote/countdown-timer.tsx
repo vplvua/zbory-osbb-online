@@ -35,6 +35,7 @@ const TIMER_STYLES: Record<TimerLevel, { text: string; track: string; fill: stri
 type CountdownTimerProps = {
   createdAt: string;
   expiresAt: string;
+  initialNow: string;
   onExpiredChange?: (expired: boolean) => void;
 };
 
@@ -45,11 +46,13 @@ function formatTwoDigits(value: number): string {
 export default function CountdownTimer({
   createdAt,
   expiresAt,
+  initialNow,
   onExpiredChange,
 }: CountdownTimerProps) {
-  const [now, setNow] = useState(() => new Date());
   const startAt = useMemo(() => new Date(createdAt), [createdAt]);
   const endAt = useMemo(() => new Date(expiresAt), [expiresAt]);
+  const initialNowDate = useMemo(() => new Date(initialNow), [initialNow]);
+  const [now, setNow] = useState<Date>(() => initialNowDate);
 
   useEffect(() => {
     const interval = setInterval(() => {

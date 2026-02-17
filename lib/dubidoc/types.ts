@@ -14,6 +14,22 @@ export type DocumentCreateResult = {
   documentId: string;
 };
 
+export type DocumentDownloadVariant = 'original' | 'signed' | 'printable' | 'protocol';
+
+export type DocumentDownloadResult = {
+  documentId: string;
+  variant: DocumentDownloadVariant;
+  bytes: Uint8Array;
+  contentType: string;
+  contentDisposition: string | null;
+  filename: string | null;
+};
+
+export type DocumentSigningLinkResult = {
+  documentId: string;
+  url: string;
+};
+
 export type DocumentStatusResult = {
   documentId: string;
   status: DocumentStatus;

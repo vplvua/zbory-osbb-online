@@ -232,7 +232,13 @@ export default function OwnerForm({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" defaultValue={defaultValues?.email ?? ''} />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  defaultValue={defaultValues?.email ?? ''}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Телефон</Label>

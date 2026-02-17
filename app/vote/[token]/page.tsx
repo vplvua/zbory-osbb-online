@@ -1,11 +1,39 @@
-import { SheetStatus } from '@prisma/client';
+import { SheetStatus, Vote } from '@prisma/client';
 import { notFound } from 'next/navigation';
 import { ErrorAlert } from '@/components/ui/error-alert';
+import VoteStatusRefreshButton from '@/components/vote/vote-status-refresh-button';
 import VoteDownloadActions from '@/components/vote/vote-download-actions';
 import VoteDraftSection from '@/components/vote/vote-draft-section';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA');
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('uk-UA', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+function VoteChoiceBadge({ vote }: { vote: Vote | null }) {
+  if (vote === null) {
+    return (
+      <span className="border-border text-muted-foreground inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium">
+        <span className="bg-muted-foreground/50 h-2 w-2 rounded-full" />
+        Не вказано
+      </span>
+    );
+  }
+
+  const isFor = vote === 'FOR';
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold ${
+        isFor ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+      }`}
+    >
+      <span className={`h-2 w-2 rounded-full ${isFor ? 'bg-emerald-600' : 'bg-red-600'}`} />
+      {isFor ? 'За' : 'Проти'}
+    </span>
+  );
+}
 
 function renderStatusBlock(
   status: SheetStatus,
@@ -14,8 +42,21 @@ function renderStatusBlock(
     pdfUploadPending: boolean;
     errorPending: boolean;
     hasPdfFile: boolean;
+    ownerSignedAt: string | null;
+    organizerSignedAt: string | null;
+    dubidocSignPending: boolean;
+    dubidocLastError: string | null;
+    hasDubidocDocument: boolean;
   },
 ) {
+  const baseDownloadPath = `/api/vote/${token}/downloads`;
+  const ownerSignedAtLabel = options.ownerSignedAt
+    ? DATE_TIME_FORMATTER.format(new Date(options.ownerSignedAt))
+    : null;
+  const organizerSignedAtLabel = options.organizerSignedAt
+    ? DATE_TIME_FORMATTER.format(new Date(options.organizerSignedAt))
+    : null;
+
   if (status === SheetStatus.PENDING_ORGANIZER) {
     return (
       <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
@@ -24,6 +65,11 @@ function renderStatusBlock(
           <p className="mt-2 text-sm text-emerald-800">
             Дякуємо! Ваш голос прийнято. Очікуємо підпису уповноваженої особи.
           </p>
+          {ownerSignedAtLabel ? (
+            <p className="mt-2 text-sm font-medium text-emerald-900">
+              Голос прийнято: {ownerSignedAtLabel}
+            </p>
+          ) : null}
         </div>
 
         {options.pdfUploadPending ? (
@@ -38,19 +84,45 @@ function renderStatusBlock(
             обробку в кабінеті ОСББ.
           </ErrorAlert>
         ) : null}
+        {options.dubidocSignPending ? (
+          <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            Готуємо сеанс підписання в Dubidoc. Оновіть сторінку через кілька секунд.
+          </p>
+        ) : null}
+        {options.dubidocLastError ? <ErrorAlert>{options.dubidocLastError}</ErrorAlert> : null}
+        {options.hasDubidocDocument ? (
+          <VoteStatusRefreshButton token={token} className="h-8 px-3 text-xs font-semibold" />
+        ) : null}
+        <VoteDownloadActions
+          baseDownloadPath={baseDownloadPath}
+          hasPdfFile={options.hasPdfFile}
+          isSigned={false}
+        />
       </section>
     );
   }
 
   if (status === SheetStatus.SIGNED) {
-    const baseDownloadPath = `/api/vote/${token}/downloads`;
-
     return (
       <section className="border-border bg-surface space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Документ підписано</h2>
         <p className="text-foreground/80 text-sm">
           Документ підписано обома сторонами. Можна завантажити підписані матеріали.
         </p>
+        <div className="space-y-1 text-sm">
+          {ownerSignedAtLabel ? (
+            <p className="text-muted-foreground">
+              Голос прийнято:{' '}
+              <span className="text-foreground font-medium">{ownerSignedAtLabel}</span>
+            </p>
+          ) : null}
+          {organizerSignedAtLabel ? (
+            <p className="text-muted-foreground">
+              Остаточно підписано:{' '}
+              <span className="text-foreground font-medium">{organizerSignedAtLabel}</span>
+            </p>
+          ) : null}
+        </div>
         {options.pdfUploadPending ? (
           <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
             PDF ще формується. Спробуйте завантажити файли трохи пізніше.
@@ -62,7 +134,12 @@ function renderStatusBlock(
             кабінеті ОСББ.
           </ErrorAlert>
         ) : null}
-        <VoteDownloadActions baseDownloadPath={baseDownloadPath} hasPdfFile={options.hasPdfFile} />
+        {options.dubidocLastError ? <ErrorAlert>{options.dubidocLastError}</ErrorAlert> : null}
+        <VoteDownloadActions
+          baseDownloadPath={baseDownloadPath}
+          hasPdfFile={options.hasPdfFile}
+          isSigned
+        />
       </section>
     );
   }
@@ -117,18 +194,35 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
       </section>
 
       {sheet.effectiveStatus === SheetStatus.DRAFT ? (
-        <VoteDraftSection
-          token={token}
-          createdAt={sheet.createdAt}
-          expiresAt={sheet.expiresAt}
-          questions={sheet.questions}
-          initiallyExpired={new Date(sheet.expiresAt) <= new Date()}
-        />
+        <>
+          {sheet.dubidocSignPending ? (
+            <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              Готуємо сеанс підписання в Dubidoc. Оновіть сторінку через кілька секунд.
+            </p>
+          ) : null}
+          {sheet.dubidocLastError ? <ErrorAlert>{sheet.dubidocLastError}</ErrorAlert> : null}
+          {sheet.hasDubidocDocument ? (
+            <VoteStatusRefreshButton token={token} className="h-8 px-3 text-xs font-semibold" />
+          ) : null}
+          <VoteDraftSection
+            token={token}
+            createdAt={sheet.createdAt}
+            expiresAt={sheet.expiresAt}
+            initialNow={new Date().toISOString()}
+            questions={sheet.questions}
+            initiallyExpired={new Date(sheet.expiresAt) <= new Date()}
+          />
+        </>
       ) : (
         renderStatusBlock(sheet.effectiveStatus, token, {
           pdfUploadPending: sheet.pdfUploadPending,
           errorPending: sheet.errorPending,
           hasPdfFile: sheet.hasPdfFile,
+          ownerSignedAt: sheet.ownerSignedAt,
+          organizerSignedAt: sheet.organizerSignedAt,
+          dubidocSignPending: sheet.dubidocSignPending,
+          dubidocLastError: sheet.dubidocLastError,
+          hasDubidocDocument: sheet.hasDubidocDocument,
         })
       )}
 
@@ -137,7 +231,10 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
           <h2 className="text-lg font-semibold">Питання голосування</h2>
           {sheet.questions.map((question) => (
             <article key={question.id} className="border-border rounded-md border p-3">
-              <p className="text-muted-foreground text-sm">Питання №{question.orderNumber}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-muted-foreground text-sm">Питання №{question.orderNumber}</p>
+                <VoteChoiceBadge vote={question.vote} />
+              </div>
               <h3 className="mt-1 text-base font-medium">{question.text}</h3>
               <p className="text-foreground/80 mt-2 text-sm">Пропозиція: {question.proposal}</p>
             </article>

@@ -37,7 +37,12 @@ export async function GET(
       });
     }
 
-    return makeDownloadResponse(prepared.bytes, prepared.filename, prepared.contentType);
+    return makeDownloadResponse(
+      prepared.bytes,
+      prepared.filename,
+      prepared.contentType,
+      prepared.contentDisposition,
+    );
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'SHEET_NOT_SIGNED') {
@@ -45,6 +50,14 @@ export async function GET(
           status: 409,
           code: 'DOWNLOAD_SHEET_NOT_SIGNED',
           message: 'Завантаження доступне лише після повного підписання листка.',
+        });
+      }
+
+      if (error.message === 'SHEET_NOT_READY_FOR_DOWNLOAD') {
+        return apiErrorResponse({
+          status: 409,
+          code: 'DOWNLOAD_SHEET_NOT_READY',
+          message: 'Завантаження стане доступним після прийняття голосу.',
         });
       }
 
@@ -61,6 +74,14 @@ export async function GET(
           status: 409,
           code: 'DOWNLOAD_SIGNED_NOT_AVAILABLE',
           message: 'Підписаний контейнер ще недоступний.',
+        });
+      }
+
+      if (error.message === 'DUBIDOC_DOCUMENT_NOT_AVAILABLE') {
+        return apiErrorResponse({
+          status: 409,
+          code: 'DOWNLOAD_PROVIDER_FILE_NOT_AVAILABLE',
+          message: 'Файли підписання ще недоступні. Спробуйте трохи пізніше.',
         });
       }
     }

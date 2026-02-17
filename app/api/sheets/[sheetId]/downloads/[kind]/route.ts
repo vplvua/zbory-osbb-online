@@ -38,7 +38,12 @@ export async function GET(
       });
     }
 
-    return makeDownloadResponse(prepared.bytes, prepared.filename, prepared.contentType);
+    return makeDownloadResponse(
+      prepared.bytes,
+      prepared.filename,
+      prepared.contentType,
+      prepared.contentDisposition,
+    );
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'PDF_NOT_AVAILABLE') {
@@ -62,6 +67,14 @@ export async function GET(
           status: 409,
           code: 'DOWNLOAD_SIGNED_NOT_AVAILABLE',
           message: 'Підписаний контейнер ще недоступний.',
+        });
+      }
+
+      if (error.message === 'DUBIDOC_DOCUMENT_NOT_AVAILABLE') {
+        return apiErrorResponse({
+          status: 409,
+          code: 'DOWNLOAD_PROVIDER_FILE_NOT_AVAILABLE',
+          message: 'Файли підписання ще недоступні. Спробуйте трохи пізніше.',
         });
       }
     }

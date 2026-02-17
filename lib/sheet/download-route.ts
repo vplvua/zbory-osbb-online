@@ -13,6 +13,14 @@ export function parseSheetDownloadKind(value: string): SheetDownloadKind | null 
     return 'signed';
   }
 
+  if (value === 'printable') {
+    return 'printable';
+  }
+
+  if (value === 'protocol') {
+    return 'protocol';
+  }
+
   return null;
 }
 
@@ -20,11 +28,17 @@ export function makeDownloadResponse(
   bytes: Uint8Array,
   filename: string,
   contentType: string,
+  contentDisposition?: string | null,
 ): Response {
+  const resolvedDisposition =
+    contentDisposition && contentDisposition.trim().length > 0
+      ? contentDisposition
+      : `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`;
+
   return new Response(Buffer.from(bytes), {
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      'Content-Disposition': resolvedDisposition,
       'Cache-Control': 'no-store',
     },
   });

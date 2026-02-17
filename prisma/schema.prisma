@@ -239,6 +239,9 @@ model Sheet {
 
   // Dubidoc
   dubidocDocumentId String? @unique
+  dubidocSignPending Boolean @default(false)
+  dubidocLastError   String?
+  dubidocLastCheckedAt DateTime?
 
   // PDF
   pdfFileUrl       String?

@@ -3,11 +3,17 @@ import { redirect } from 'next/navigation';
 import { SheetStatus } from '@prisma/client';
 import SheetDownloadActions from '@/app/sheets/_components/sheet-download-actions';
 import SheetDeleteForm from '@/app/sheets/_components/sheet-delete-form';
+import SheetOrganizerSignActions from '@/app/sheets/_components/sheet-organizer-sign-actions';
 import SheetPublicLinkActions from '@/app/sheets/_components/sheet-public-link-actions';
 import SheetsFilters from '@/app/sheets/_components/sheets-filters';
 import SheetRetryForm from '@/app/sheets/_components/sheet-retry-form';
 import SheetsSearch from '@/app/sheets/_components/sheets-search';
-import { deleteSheetAction, retrySheetPdfAction } from '@/app/sheets/actions';
+import {
+  deleteSheetAction,
+  organizerSignSheetAction,
+  refreshSheetSigningStatusAction,
+  retrySheetPdfAction,
+} from '@/app/sheets/actions';
 import AppHeader from '@/components/app-header';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
@@ -380,6 +386,10 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                   (sheet.status === SheetStatus.DRAFT || sheet.status === SheetStatus.EXPIRED) &&
                   sheet.ownerSignedAt === null &&
                   sheet.organizerSignedAt === null;
+                const canOrganizerSign =
+                  sheet.status === SheetStatus.PENDING_ORGANIZER &&
+                  sheet.ownerSignedAt !== null &&
+                  sheet.organizerSignedAt === null;
 
                 return (
                   <Card key={sheet.id}>
@@ -402,9 +412,22 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                           </div>
                         </div>
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${SHEET_STATUS_STYLES[displayStatus]}`}
+                          className={`inline-flex max-w-[9.75rem] shrink-0 items-center rounded-full px-2.5 py-1 text-center text-[11px] leading-tight font-medium whitespace-normal sm:max-w-none sm:text-xs sm:whitespace-nowrap ${SHEET_STATUS_STYLES[displayStatus]}`}
                         >
-                          {SHEET_STATUS_LABELS[displayStatus]}
+                          {displayStatus === SheetStatus.PENDING_ORGANIZER ? (
+                            <>
+                              <span className="sm:hidden">
+                                Очікує підпису
+                                <br />
+                                відповідальної особи
+                              </span>
+                              <span className="hidden sm:inline">
+                                {SHEET_STATUS_LABELS[displayStatus]}
+                              </span>
+                            </>
+                          ) : (
+                            SHEET_STATUS_LABELS[displayStatus]
+                          )}
                         </span>
                       </div>
                     </CardHeader>
@@ -429,6 +452,29 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                           <SheetPublicLinkActions votePath={votePath} />
                         </div>
                       </div>
+
+                      {canOrganizerSign ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Підпис відповідальної особи</p>
+                          {sheet.dubidocSignPending ? (
+                            <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-800">
+                              Триває підготовка або синхронізація Dubidoc
+                            </span>
+                          ) : null}
+                          {sheet.dubidocLastError ? (
+                            <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                              {sheet.dubidocLastError}
+                            </span>
+                          ) : null}
+                          <SheetOrganizerSignActions
+                            sheetId={sheet.id}
+                            redirectTo={currentSheetsHref}
+                            disabled={sheet.dubidocSignPending}
+                            signAction={organizerSignSheetAction}
+                            refreshAction={refreshSheetSigningStatusAction}
+                          />
+                        </div>
+                      ) : null}
 
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Завантаження</p>

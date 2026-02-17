@@ -2,7 +2,14 @@ import { SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { formatOwnerShortName } from '@/lib/owner/name';
 import { isValidPublicToken } from '@/lib/tokens';
+import { refreshSheetSigningStatusFromDubidoc } from '@/lib/vote/signing';
 import type { VoteSheetDto } from '@/lib/vote/types';
+
+const DUBIDOC_AUTO_SYNC_INTERVAL_MS = 30_000;
+
+type VoteSheetLookupOptions = {
+  skipDubidocAutoSync?: boolean;
+};
 
 export function getEffectiveSheetStatus(status: SheetStatus, expiresAt: Date, now = new Date()) {
   if (status === SheetStatus.DRAFT && expiresAt <= now) {
@@ -12,12 +19,8 @@ export function getEffectiveSheetStatus(status: SheetStatus, expiresAt: Date, no
   return status;
 }
 
-export async function getVoteSheetByToken(token: string): Promise<VoteSheetDto | null> {
-  if (!isValidPublicToken(token)) {
-    return null;
-  }
-
-  const sheet = await prisma.sheet.findUnique({
+async function readVoteSheetByToken(token: string) {
+  return prisma.sheet.findUnique({
     where: { publicToken: token },
     include: {
       owner: {
@@ -60,6 +63,62 @@ export async function getVoteSheetByToken(token: string): Promise<VoteSheetDto |
       },
     },
   });
+}
+
+function shouldAutoSyncWithDubidoc(sheet: {
+  status: SheetStatus;
+  dubidocDocumentId: string | null;
+  dubidocSignPending: boolean;
+  dubidocLastCheckedAt: Date | null;
+}): boolean {
+  if (!sheet.dubidocDocumentId || sheet.dubidocSignPending) {
+    return false;
+  }
+
+  if (sheet.status !== SheetStatus.DRAFT && sheet.status !== SheetStatus.PENDING_ORGANIZER) {
+    return false;
+  }
+
+  const lastCheckedAt = sheet.dubidocLastCheckedAt;
+  if (!lastCheckedAt) {
+    return true;
+  }
+
+  return Date.now() - lastCheckedAt.getTime() >= DUBIDOC_AUTO_SYNC_INTERVAL_MS;
+}
+
+export async function getVoteSheetByToken(
+  token: string,
+  options?: VoteSheetLookupOptions,
+): Promise<VoteSheetDto | null> {
+  if (!isValidPublicToken(token)) {
+    return null;
+  }
+
+  let sheet = await readVoteSheetByToken(token);
+
+  if (
+    sheet &&
+    !options?.skipDubidocAutoSync &&
+    shouldAutoSyncWithDubidoc({
+      status: sheet.status,
+      dubidocDocumentId: sheet.dubidocDocumentId,
+      dubidocSignPending: sheet.dubidocSignPending,
+      dubidocLastCheckedAt: sheet.dubidocLastCheckedAt,
+    })
+  ) {
+    const sheetIdForSync = sheet.id;
+    try {
+      await refreshSheetSigningStatusFromDubidoc(sheetIdForSync);
+      sheet = await readVoteSheetByToken(token);
+    } catch (error) {
+      console.warn('[vote:sheet] failed to auto-sync Dubidoc status', {
+        sheetId: sheetIdForSync,
+        token,
+        error,
+      });
+    }
+  }
 
   if (!sheet) {
     return null;
@@ -72,6 +131,11 @@ export async function getVoteSheetByToken(token: string): Promise<VoteSheetDto |
     id: sheet.id,
     status: sheet.status,
     effectiveStatus,
+    ownerSignedAt: sheet.ownerSignedAt?.toISOString() ?? null,
+    organizerSignedAt: sheet.organizerSignedAt?.toISOString() ?? null,
+    dubidocSignPending: sheet.dubidocSignPending,
+    dubidocLastError: sheet.dubidocLastError,
+    hasDubidocDocument: Boolean(sheet.dubidocDocumentId),
     pdfUploadPending: sheet.pdfUploadPending,
     errorPending: sheet.errorPending,
     hasPdfFile: Boolean(sheet.pdfFileUrl),
