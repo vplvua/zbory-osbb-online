@@ -1,0 +1,66 @@
+'use client';
+
+import { useActionState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ErrorAlert } from '@/components/ui/error-alert';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import type { SheetFormState } from '@/app/sheets/actions';
+import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
+
+const initialState: SheetFormState = {};
+
+type SheetOrganizerSignActionsProps = {
+  sheetId: string;
+  redirectTo?: string;
+  disabled?: boolean;
+  signAction: (state: SheetFormState, formData: FormData) => Promise<SheetFormState>;
+  refreshAction: (state: SheetFormState, formData: FormData) => Promise<SheetFormState>;
+};
+
+export default function SheetOrganizerSignActions({
+  sheetId,
+  redirectTo,
+  disabled = false,
+  signAction,
+  refreshAction,
+}: SheetOrganizerSignActionsProps) {
+  const [signState, signFormAction, signPending] = useActionState(signAction, initialState);
+  const [refreshState, refreshFormAction, refreshPending] = useActionState(
+    refreshAction,
+    initialState,
+  );
+
+  const isPending = signPending || refreshPending;
+  const error = signState.error ?? refreshState.error;
+  useActionErrorToast(error);
+
+  return (
+    <div className="space-y-2">
+      {error ? <ErrorAlert size="compact">{error}</ErrorAlert> : null}
+      <div className="flex flex-wrap gap-2">
+        <form action={signFormAction} data-submitting={signPending ? 'true' : 'false'}>
+          <input type="hidden" name="sheetId" value={sheetId} />
+          {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
+          <Button type="submit" className="h-8 px-3 text-xs" disabled={disabled || isPending}>
+            {signPending ? <LoadingSpinner className="h-3.5 w-3.5" /> : null}
+            {signPending ? 'Готуємо підпис...' : 'Підписати в Dubidoc'}
+          </Button>
+        </form>
+
+        <form action={refreshFormAction} data-submitting={refreshPending ? 'true' : 'false'}>
+          <input type="hidden" name="sheetId" value={sheetId} />
+          {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
+          <Button
+            type="submit"
+            variant="outline"
+            className="h-8 px-3 text-xs"
+            disabled={disabled || isPending}
+          >
+            {refreshPending ? <LoadingSpinner className="h-3.5 w-3.5" /> : null}
+            {refreshPending ? 'Оновлюємо...' : 'Оновити статус'}
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}

@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import type { DocumentSigningService } from '@/lib/dubidoc/adapter';
 import type {
   DocumentCreateResult,
+  DocumentDownloadResult,
+  DocumentDownloadVariant,
   DocumentParticipantInput,
+  DocumentSigningLinkResult,
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
 import { PermanentError, TemporaryError } from '@/lib/errors';
@@ -15,9 +18,11 @@ type MockDocumentRecord = {
   statusChecks: number;
   ownerSignedAt: Date | null;
   organizerSignedAt: Date | null;
+  signingLinkToken: string | null;
 };
 
 const mockDocuments = new Map<string, MockDocumentRecord>();
+const textEncoder = new TextEncoder();
 
 function createMockDocumentId(): string {
   return `mock-doc-${randomUUID()}`;
@@ -69,6 +74,62 @@ function resolveStatus(document: MockDocumentRecord): DocumentStatusResult {
   };
 }
 
+function toMockFileBaseName(document: MockDocumentRecord): string {
+  const base = document.title
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 64);
+
+  return base || `sheet-${document.id}`;
+}
+
+function buildMockSignedPayload(document: MockDocumentRecord): Uint8Array {
+  const p7sBody = [
+    '-----BEGIN PKCS7-----',
+    `mock-document-id:${document.id}`,
+    `title:${document.title}`,
+    `bytes:${document.fileBuffer.byteLength}`,
+    '-----END PKCS7-----',
+  ].join('\n');
+
+  return textEncoder.encode(p7sBody);
+}
+
+function makeMockDownloadResult(
+  document: MockDocumentRecord,
+  variant: DocumentDownloadVariant,
+): DocumentDownloadResult {
+  const baseName = toMockFileBaseName(document);
+  if (variant === 'signed') {
+    return {
+      documentId: document.id,
+      variant,
+      bytes: buildMockSignedPayload(document),
+      contentType: 'application/pkcs7-signature',
+      contentDisposition: `attachment; filename="${baseName}-signed.p7s"`,
+      filename: `${baseName}-signed.p7s`,
+    };
+  }
+
+  const filename =
+    variant === 'original'
+      ? `${baseName}.pdf`
+      : variant === 'printable'
+        ? `${baseName}-printable.pdf`
+        : `${baseName}-protocol.pdf`;
+
+  return {
+    documentId: document.id,
+    variant,
+    bytes: Uint8Array.from(document.fileBuffer),
+    contentType: 'application/pdf',
+    contentDisposition: `attachment; filename="${filename}"`,
+    filename,
+  };
+}
+
 export class MockDocumentSigningService implements DocumentSigningService {
   async createDocument(fileBuffer: Uint8Array, title: string): Promise<DocumentCreateResult> {
     const documentId = createMockDocumentId();
@@ -81,6 +142,7 @@ export class MockDocumentSigningService implements DocumentSigningService {
       statusChecks: 0,
       ownerSignedAt: null,
       organizerSignedAt: null,
+      signingLinkToken: null,
     });
 
     return { documentId };
@@ -109,24 +171,43 @@ export class MockDocumentSigningService implements DocumentSigningService {
     return resolveStatus(document);
   }
 
-  async downloadSigned(documentId: string): Promise<Uint8Array> {
-    const document = requireMockDocument(documentId);
-    const status = resolveStatus(document);
+  async generateSigningLink(
+    documentId: string,
+    days?: number | null,
+  ): Promise<DocumentSigningLinkResult> {
+    void days;
 
-    if (status.status !== 'ORGANIZER_SIGNED') {
-      throw new TemporaryError('[Dubidoc mock] Document is not fully signed yet.', {
-        code: 'DUBIDOC_MOCK_NOT_SIGNED',
-      });
+    const document = requireMockDocument(documentId);
+    if (!document.signingLinkToken) {
+      document.signingLinkToken = randomUUID();
     }
 
-    const p7sBody = [
-      '-----BEGIN PKCS7-----',
-      `mock-document-id:${document.id}`,
-      `title:${document.title}`,
-      `bytes:${document.fileBuffer.byteLength}`,
-      '-----END PKCS7-----',
-    ].join('\n');
+    return {
+      documentId: document.id,
+      url: `https://mock.dubidoc.local/sign/${encodeURIComponent(document.id)}/${encodeURIComponent(document.signingLinkToken)}`,
+    };
+  }
 
-    return new TextEncoder().encode(p7sBody);
+  async downloadDocumentFile(
+    documentId: string,
+    variant: DocumentDownloadVariant,
+  ): Promise<DocumentDownloadResult> {
+    const document = requireMockDocument(documentId);
+    if (variant === 'signed') {
+      const status = resolveStatus(document);
+
+      if (status.status !== 'ORGANIZER_SIGNED') {
+        throw new TemporaryError('[Dubidoc mock] Document is not fully signed yet.', {
+          code: 'DUBIDOC_MOCK_NOT_SIGNED',
+        });
+      }
+    }
+
+    return makeMockDownloadResult(document, variant);
+  }
+
+  async revokePublicLinks(documentId: string): Promise<void> {
+    const document = requireMockDocument(documentId);
+    document.signingLinkToken = null;
   }
 }

@@ -3,7 +3,10 @@ import { DubidocApiSigningService } from '@/lib/dubidoc/real-provider';
 import { assertIntegrationEnvGuardrails, isConfiguredEnvValue } from '@/lib/integrations/env-guard';
 import type {
   DocumentCreateResult,
+  DocumentDownloadResult,
+  DocumentDownloadVariant,
   DocumentParticipantInput,
+  DocumentSigningLinkResult,
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
 
@@ -16,7 +19,12 @@ export interface DocumentSigningService {
     participants: DocumentParticipantInput[],
   ): Promise<DocumentCreateResult>;
   getDocumentStatus(documentId: string): Promise<DocumentStatusResult>;
-  downloadSigned(documentId: string): Promise<Uint8Array>;
+  generateSigningLink(documentId: string, days?: number | null): Promise<DocumentSigningLinkResult>;
+  downloadDocumentFile(
+    documentId: string,
+    variant: DocumentDownloadVariant,
+  ): Promise<DocumentDownloadResult>;
+  revokePublicLinks(documentId: string): Promise<void>;
 }
 
 export function isDubidocConfigured(): boolean {

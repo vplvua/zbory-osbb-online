@@ -10,6 +10,7 @@ type VoteDraftSectionProps = {
   token: string;
   createdAt: string;
   expiresAt: string;
+  initialNow: string;
   questions: VoteSheetQuestionDto[];
   initiallyExpired: boolean;
 };
@@ -18,6 +19,7 @@ export default function VoteDraftSection({
   token,
   createdAt,
   expiresAt,
+  initialNow,
   questions,
   initiallyExpired,
 }: VoteDraftSectionProps) {
@@ -25,7 +27,12 @@ export default function VoteDraftSection({
 
   return (
     <section className="space-y-4">
-      <CountdownTimer createdAt={createdAt} expiresAt={expiresAt} onExpiredChange={setIsExpired} />
+      <CountdownTimer
+        createdAt={createdAt}
+        expiresAt={expiresAt}
+        initialNow={initialNow}
+        onExpiredChange={setIsExpired}
+      />
       {isExpired ? (
         <ErrorAlert>Термін голосування завершено. Надсилання голосу недоступне.</ErrorAlert>
       ) : (

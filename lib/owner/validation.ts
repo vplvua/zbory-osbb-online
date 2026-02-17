@@ -9,7 +9,7 @@ export const ownerSchema = z.object({
   ownershipNumerator: z.coerce.number().int().min(1),
   ownershipDenominator: z.coerce.number().int().min(1),
   ownershipDocument: z.string().trim().min(5).max(500),
-  email: z.string().trim().email().optional().or(z.literal('')),
+  email: z.string().trim().email(),
   phone: z.string().trim().optional().or(z.literal('')),
   representativeName: z.string().trim().max(200).optional().or(z.literal('')),
   representativeDocument: z.string().trim().max(500).optional().or(z.literal('')),

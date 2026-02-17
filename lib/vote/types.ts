@@ -21,6 +21,11 @@ export type VoteSheetDto = {
   id: string;
   status: SheetStatus;
   effectiveStatus: SheetStatus;
+  ownerSignedAt: string | null;
+  organizerSignedAt: string | null;
+  dubidocSignPending: boolean;
+  dubidocLastError: string | null;
+  hasDubidocDocument: boolean;
   pdfUploadPending: boolean;
   errorPending: boolean;
   hasPdfFile: boolean;
@@ -42,4 +47,5 @@ export type VoteSubmitResponseDto = {
   ok: true;
   message: string;
   sheet: VoteSheetDto;
+  redirectUrl?: string;
 };

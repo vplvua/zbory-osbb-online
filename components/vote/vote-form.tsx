@@ -6,6 +6,7 @@ import type { Vote } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import DubidocSigningWidget from '@/components/vote/dubidoc-signing-widget';
 import { readJsonBody, resolveApiErrorMessage, type ApiErrorCodeMap } from '@/lib/api/client-error';
 import { isApiOkDto } from '@/lib/api/error-dto';
 import { toast } from '@/lib/toast/client';
@@ -37,6 +38,10 @@ const VOTE_ERROR_MAP: ApiErrorCodeMap = {
   VOTE_STATE_CONFLICT: 'Листок більше не доступний для подання.',
   VOTE_SAVE_FAILED: 'Не вдалося зберегти голос. Спробуйте ще раз.',
   VOTE_REFRESH_FAILED: 'Голос збережено, але не вдалося оновити дані листка.',
+  VOTE_SIGN_PREPARE_FAILED: 'Не вдалося підготувати документ для підписання. Спробуйте ще раз.',
+  VOTE_SIGNING_UNAVAILABLE: 'Сервіс підписання тимчасово недоступний. Спробуйте ще раз.',
+  VOTE_SIGNING_NOT_CONFIGURED:
+    'Підписання тимчасово недоступне через неповні налаштування ОСББ. Зверніться до відповідальної особи.',
   VOTE_SUBMIT_FAILED: 'Не вдалося зберегти голос. Спробуйте ще раз.',
 };
 
@@ -48,7 +53,10 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
   );
   const [isConsentChecked, setIsConsentChecked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshingSigningUrl, setIsRefreshingSigningUrl] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signingUrl, setSigningUrl] = useState<string | null>(null);
+  const [isSigningWidgetOpen, setIsSigningWidgetOpen] = useState(false);
 
   const isComplete = useMemo(() => {
     if (!isConsentChecked) {
@@ -95,12 +103,13 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
       const result = payload as VoteSubmitSuccess;
       const redirectUrl = result.redirectUrl ?? result.signRedirectUrl ?? result.signUrl;
       if (redirectUrl) {
-        toast.info('Голос прийнято. Перенаправляємо до підпису.');
-        window.location.assign(redirectUrl);
+        toast.info('Відповіді збережено. Підпишіть документ нижче.');
+        setSigningUrl(redirectUrl);
+        setIsSigningWidgetOpen(true);
         return;
       }
 
-      toast.success('Голос успішно надіслано.');
+      toast.success('Відповіді збережено.');
       router.refresh();
     } catch {
       const message = UNKNOWN_VOTE_ERROR_MESSAGE;
@@ -111,6 +120,60 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
       setIsSubmitting(false);
     }
   };
+
+  const handleRefreshSigningLink = async () => {
+    if (isRefreshingSigningUrl) {
+      return;
+    }
+
+    setIsRefreshingSigningUrl(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/vote/${encodeURIComponent(token)}/sign-link`, {
+        method: 'POST',
+      });
+      const payload = await readJsonBody(response);
+      if (!response.ok || !isApiOkDto(payload)) {
+        const message = resolveApiErrorMessage(payload, {
+          codeMap: VOTE_ERROR_MAP,
+          fallbackMessage: UNKNOWN_VOTE_ERROR_MESSAGE,
+        });
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      const result = payload as VoteSubmitSuccess;
+      const redirectUrl = result.redirectUrl ?? result.signRedirectUrl ?? result.signUrl;
+      if (!redirectUrl) {
+        const message = UNKNOWN_VOTE_ERROR_MESSAGE;
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      setSigningUrl(redirectUrl);
+      setIsSigningWidgetOpen(true);
+      toast.info('Відкриваємо підписання в Dubidoc.');
+    } catch {
+      const message = UNKNOWN_VOTE_ERROR_MESSAGE;
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsRefreshingSigningUrl(false);
+    }
+  };
+
+  if (signingUrl && isSigningWidgetOpen) {
+    return (
+      <DubidocSigningWidget
+        signingUrl={signingUrl}
+        onClose={() => {
+          setIsSigningWidgetOpen(false);
+        }}
+      />
+    );
+  }
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
@@ -168,6 +231,32 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Увага! Після підписання зміни неможливі.
         </p>
+
+        {signingUrl ? (
+          <div className="space-y-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-3">
+            <p className="text-sm text-sky-800">Поверніться до підписання документа в Dubidoc.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setIsSigningWidgetOpen(true);
+                }}
+              >
+                Продовжити підписання
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRefreshSigningLink}
+                disabled={isRefreshingSigningUrl}
+              >
+                {isRefreshingSigningUrl ? <LoadingSpinner className="h-4 w-4" /> : null}
+                {isRefreshingSigningUrl ? 'Оновлюємо...' : 'Оновити посилання'}
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 

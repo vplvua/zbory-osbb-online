@@ -2,7 +2,10 @@ import { z } from 'zod';
 import type { DocumentSigningService } from '@/lib/dubidoc/adapter';
 import type {
   DocumentCreateResult,
+  DocumentDownloadResult,
+  DocumentDownloadVariant,
   DocumentParticipantInput,
+  DocumentSigningLinkResult,
   DocumentStatus,
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
@@ -22,6 +25,12 @@ const dubidocErrorSchema = z
 const createDocumentResponseSchema = z
   .object({
     id: z.string().min(1),
+  })
+  .passthrough();
+
+const signingLinkResponseSchema = z
+  .object({
+    link: z.string().url(),
   })
   .passthrough();
 
@@ -67,10 +76,21 @@ export type DubidocConfig = {
 };
 
 type RequestOptions = {
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'DELETE';
   path: string;
   body?: unknown;
-  expected: 'json' | 'bytes';
+};
+
+type BinaryRequestResult = {
+  bytes: Uint8Array;
+  headers: Headers;
+};
+
+const DEFAULT_CONTENT_TYPE_BY_VARIANT: Record<DocumentDownloadVariant, string> = {
+  original: 'application/pdf',
+  printable: 'application/pdf',
+  protocol: 'application/pdf',
+  signed: 'application/pkcs7-signature',
 };
 
 function isRetryableStatus(status: number): boolean {
@@ -186,6 +206,109 @@ function sortParticipantsForSigning(
   });
 }
 
+function sanitizeHeaderValue(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.replace(/[\r\n]+/g, ' ').trim();
+  return normalized.length ? normalized : null;
+}
+
+function parseFilenameToken(token: string): string | null {
+  const trimmed = token.trim().replace(/^["']|["']$/g, '');
+  if (!trimmed) {
+    return null;
+  }
+
+  const normalized = trimmed
+    .replace(/[\/\\]/g, '-')
+    .replace(/[\r\n\t]/g, '')
+    .trim();
+  return normalized.length ? normalized : null;
+}
+
+function decodeExtendedFilename(token: string): string | null {
+  const normalized = token.trim().replace(/^["']|["']$/g, '');
+  if (!normalized) {
+    return null;
+  }
+
+  const parts = normalized.split("'");
+  if (parts.length >= 3) {
+    const encoded = parts.slice(2).join("'");
+    try {
+      return parseFilenameToken(decodeURIComponent(encoded));
+    } catch {
+      return parseFilenameToken(encoded);
+    }
+  }
+
+  try {
+    return parseFilenameToken(decodeURIComponent(normalized));
+  } catch {
+    return parseFilenameToken(normalized);
+  }
+}
+
+function extractFilename(contentDisposition: string | null): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+
+  const extended = /filename\*=([^;]+)/i.exec(contentDisposition);
+  if (extended) {
+    const decoded = decodeExtendedFilename(extended[1]);
+    if (decoded) {
+      return decoded;
+    }
+  }
+
+  const basic = /filename=([^;]+)/i.exec(contentDisposition);
+  if (basic) {
+    return parseFilenameToken(basic[1]);
+  }
+
+  return null;
+}
+
+function normalizeContentType(value: string | null, variant: DocumentDownloadVariant): string {
+  const fallback = DEFAULT_CONTENT_TYPE_BY_VARIANT[variant];
+  const normalized = sanitizeHeaderValue(value)?.toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+
+  const mime = normalized.split(';', 1)[0]?.trim();
+  if (!mime || !/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(mime)) {
+    return fallback;
+  }
+
+  return mime;
+}
+
+function getFallbackFilename(
+  documentId: string,
+  variant: DocumentDownloadVariant,
+  contentType: string,
+): string {
+  if (variant === 'signed') {
+    return contentType === 'application/zip'
+      ? `${documentId}-signed.zip`
+      : `${documentId}-signed.p7s`;
+  }
+
+  if (variant === 'protocol') {
+    return `${documentId}-protocol.pdf`;
+  }
+
+  if (variant === 'printable') {
+    return `${documentId}-printable.pdf`;
+  }
+
+  return `${documentId}.pdf`;
+}
+
 export class DubidocApiSigningService implements DocumentSigningService {
   private readonly baseUrl: string;
   private readonly callbackUrl?: string;
@@ -195,49 +318,64 @@ export class DubidocApiSigningService implements DocumentSigningService {
     this.callbackUrl = config.callbackUrl?.trim() || undefined;
   }
 
-  private get headers(): HeadersInit {
+  private get headers(): Record<string, string> {
     return {
-      'Content-Type': 'application/json',
       'X-Access-Token': this.config.apiKey,
       'X-Organization': this.config.orgId,
     };
   }
 
-  private async request<T>(options: RequestOptions): Promise<T> {
+  private buildHeaders(hasBody: boolean): HeadersInit {
+    return hasBody
+      ? {
+          ...this.headers,
+          'Content-Type': 'application/json',
+        }
+      : this.headers;
+  }
+
+  private async sendRequest(options: RequestOptions): Promise<Response> {
     return withRetry(
       async ({ signal }) => {
         try {
           const response = await fetch(`${this.baseUrl}${options.path}`, {
             method: options.method,
-            headers: this.headers,
+            headers: this.buildHeaders(Boolean(options.body)),
             body: options.body ? JSON.stringify(options.body) : undefined,
             signal,
           });
 
           if (!response.ok) {
             let errorMessage = `[Dubidoc] ${options.method} ${options.path} failed with status ${response.status}.`;
-            try {
-              const parsedError = dubidocErrorSchema.safeParse(await response.json());
-              if (parsedError.success) {
-                const detail =
-                  parsedError.data.detail ?? parsedError.data.message ?? parsedError.data.title;
-                if (detail) {
-                  errorMessage = `${errorMessage} ${detail}`;
+            const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+            const rawBody = await response.text();
+
+            if (contentType.includes('application/json')) {
+              try {
+                const parsedError = dubidocErrorSchema.safeParse(JSON.parse(rawBody));
+                if (parsedError.success) {
+                  const detail =
+                    parsedError.data.detail ?? parsedError.data.message ?? parsedError.data.title;
+                  if (detail) {
+                    errorMessage = `${errorMessage} ${detail}`;
+                  }
                 }
+              } catch {
+                // Ignore parse failures and fallback to plain body handling below.
               }
-            } catch {
-              // Ignore parse failures and use default error message.
+            }
+
+            if (errorMessage.endsWith(`${response.status}.`)) {
+              const detail = rawBody.trim();
+              if (detail) {
+                errorMessage = `${errorMessage} ${detail.slice(0, 500)}`;
+              }
             }
 
             throw classifyDubidocHttpStatus(response.status, errorMessage);
           }
 
-          if (options.expected === 'bytes') {
-            const buffer = await response.arrayBuffer();
-            return new Uint8Array(buffer) as T;
-          }
-
-          return (await response.json()) as T;
+          return response;
         } catch (error) {
           throw classifyDubidocRequestError(error);
         }
@@ -257,6 +395,32 @@ export class DubidocApiSigningService implements DocumentSigningService {
     );
   }
 
+  private async requestJson<T>(options: RequestOptions): Promise<T> {
+    const response = await this.sendRequest(options);
+    const contentLength = response.headers.get('content-length');
+    if (response.status === 204 || contentLength === '0') {
+      return null as T;
+    }
+
+    try {
+      return (await response.json()) as T;
+    } catch (error) {
+      throw new CriticalError('[Dubidoc] Unexpected non-JSON response.', {
+        code: 'DUBIDOC_INVALID_JSON_RESPONSE',
+        cause: error,
+      });
+    }
+  }
+
+  private async requestBinary(options: RequestOptions): Promise<BinaryRequestResult> {
+    const response = await this.sendRequest(options);
+    const buffer = await response.arrayBuffer();
+    return {
+      bytes: new Uint8Array(buffer),
+      headers: response.headers,
+    };
+  }
+
   async createDocument(fileBuffer: Uint8Array, title: string): Promise<DocumentCreateResult> {
     const payload = {
       file: Buffer.from(fileBuffer).toString('base64'),
@@ -265,11 +429,10 @@ export class DubidocApiSigningService implements DocumentSigningService {
       callbackUrl: this.callbackUrl,
     };
 
-    const response = await this.request<unknown>({
+    const response = await this.requestJson<unknown>({
       method: 'POST',
       path: '/api/v1/documents',
       body: payload,
-      expected: 'json',
     });
 
     const parsed = createDocumentResponseSchema.safeParse(response);
@@ -294,11 +457,10 @@ export class DubidocApiSigningService implements DocumentSigningService {
       const participant = ordered[index];
       const body = mapParticipantToRequest(participant, index + 1);
 
-      await this.request<unknown>({
+      await this.requestJson<unknown>({
         method: 'POST',
         path: `/api/v1/documents/${encodeURIComponent(documentId)}/participants`,
         body,
-        expected: 'json',
       });
     }
   }
@@ -312,23 +474,17 @@ export class DubidocApiSigningService implements DocumentSigningService {
 
     if (participants.length) {
       await this.addParticipants(created.documentId, participants);
-
-      // Sequential route requires explicit flow start after participants are added.
-      await this.request<unknown>({
-        method: 'POST',
-        path: `/api/v1/documents/${encodeURIComponent(created.documentId)}/send`,
-        expected: 'json',
-      });
+      // Owner signs first in our MVP flow, so explicit `send` is not required.
+      // Dubidoc docs recommend not calling `/send` when the first signature is the document owner.
     }
 
     return created;
   }
 
   async getDocumentStatus(documentId: string): Promise<DocumentStatusResult> {
-    const detailsRaw = await this.request<unknown>({
+    const detailsRaw = await this.requestJson<unknown>({
       method: 'GET',
       path: `/api/v1/documents/${encodeURIComponent(documentId)}`,
-      expected: 'json',
     });
 
     const details = documentDetailsSchema.safeParse(detailsRaw);
@@ -340,10 +496,9 @@ export class DubidocApiSigningService implements DocumentSigningService {
 
     let participants = details.data.participants ?? [];
     if (!participants.length) {
-      const participantsRaw = await this.request<unknown>({
+      const participantsRaw = await this.requestJson<unknown>({
         method: 'GET',
         path: `/api/v1/documents/${encodeURIComponent(documentId)}/participants`,
-        expected: 'json',
       });
 
       const parsedParticipants = participantsListSchema.safeParse(participantsRaw);
@@ -364,11 +519,65 @@ export class DubidocApiSigningService implements DocumentSigningService {
     };
   }
 
-  async downloadSigned(documentId: string): Promise<Uint8Array> {
-    return this.request<Uint8Array>({
+  async generateSigningLink(
+    documentId: string,
+    days?: number | null,
+  ): Promise<DocumentSigningLinkResult> {
+    const response = await this.requestJson<unknown>({
+      method: 'POST',
+      path: `/api/v1/documents/${encodeURIComponent(documentId)}/links`,
+      body: {
+        action: 'sign',
+        ...(typeof days === 'number' ? { days } : {}),
+      },
+    });
+
+    const parsed = signingLinkResponseSchema.safeParse(response);
+    if (!parsed.success) {
+      throw new CriticalError('[Dubidoc] Unexpected generate link response format.', {
+        code: 'DUBIDOC_INVALID_LINK_RESPONSE',
+      });
+    }
+
+    return {
+      documentId,
+      url: parsed.data.link,
+    };
+  }
+
+  async downloadDocumentFile(
+    documentId: string,
+    variant: DocumentDownloadVariant,
+  ): Promise<DocumentDownloadResult> {
+    const query = new URLSearchParams({
+      file: variant,
+      type: 'attachment',
+    });
+
+    const response = await this.requestBinary({
       method: 'GET',
-      path: `/api/v1/documents/${encodeURIComponent(documentId)}/download?file=signed&type=attachment`,
-      expected: 'bytes',
+      path: `/api/v1/documents/${encodeURIComponent(documentId)}/download?${query.toString()}`,
+    });
+
+    const contentDisposition = sanitizeHeaderValue(response.headers.get('content-disposition'));
+    const contentType = normalizeContentType(response.headers.get('content-type'), variant);
+    const filename =
+      extractFilename(contentDisposition) ?? getFallbackFilename(documentId, variant, contentType);
+
+    return {
+      documentId,
+      variant,
+      bytes: response.bytes,
+      contentType,
+      contentDisposition,
+      filename,
+    };
+  }
+
+  async revokePublicLinks(documentId: string): Promise<void> {
+    await this.requestJson<unknown>({
+      method: 'DELETE',
+      path: `/api/v1/documents/${encodeURIComponent(documentId)}/links`,
     });
   }
 }

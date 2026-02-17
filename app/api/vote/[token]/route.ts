@@ -1,10 +1,21 @@
 import { SheetStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db/prisma';
 import { apiErrorResponse } from '@/lib/api/error-response';
+import { prisma } from '@/lib/db/prisma';
 import { generateAndStoreSheetPdf, PDF_TARGET_MS } from '@/lib/sheet/pdf-processing';
 import { isValidPublicToken } from '@/lib/tokens';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
+import {
+  ensureSheetSigningRedirectUrl,
+  ORGANIZER_EMAIL_REQUIRED_ERROR,
+  OWNER_EMAIL_REQUIRED_ERROR,
+  SIGNERS_EMAIL_CONFLICT_ERROR,
+} from '@/lib/vote/signing';
+import {
+  clearSheetDubidocSignState,
+  markSheetDubidocSignFailed,
+  markSheetDubidocSignPending,
+} from '@/lib/vote/dubidoc-sign-state';
 import type { VoteSheetResponseDto, VoteSubmitResponseDto } from '@/lib/vote/types';
 import { voteSubmitSchema } from '@/lib/vote/validation';
 
@@ -95,6 +106,8 @@ export async function POST(
     });
   }
 
+  let signStateSheetId: string | null = null;
+
   try {
     let payload: unknown;
     try {
@@ -136,6 +149,7 @@ export async function POST(
         message: 'Листок не знайдено.',
       });
     }
+    signStateSheetId = sheet.id;
 
     const now = new Date();
     if (sheet.expiresAt <= now || sheet.status === SheetStatus.EXPIRED) {
@@ -170,6 +184,23 @@ export async function POST(
 
     try {
       await prisma.$transaction(async (tx) => {
+        const isDraftAndActive = await tx.sheet.findFirst({
+          where: {
+            id: sheet.id,
+            status: SheetStatus.DRAFT,
+            expiresAt: {
+              gt: now,
+            },
+          },
+          select: { id: true },
+        });
+
+        if (!isDraftAndActive) {
+          const conflictError = new Error('SHEET_STATE_CONFLICT');
+          conflictError.name = 'SHEET_STATE_CONFLICT';
+          throw conflictError;
+        }
+
         await Promise.all(
           parsed.data.answers.map((answer) =>
             tx.answer.upsert({
@@ -190,27 +221,6 @@ export async function POST(
             }),
           ),
         );
-
-        // Mock signing start: simulate owner signing immediately for MVP.
-        const updateResult = await tx.sheet.updateMany({
-          where: {
-            id: sheet.id,
-            status: SheetStatus.DRAFT,
-            expiresAt: {
-              gt: now,
-            },
-          },
-          data: {
-            status: SheetStatus.PENDING_ORGANIZER,
-            ownerSignedAt: now,
-          },
-        });
-
-        if (updateResult.count !== 1) {
-          const conflictError = new Error('SHEET_STATE_CONFLICT');
-          conflictError.name = 'SHEET_STATE_CONFLICT';
-          throw conflictError;
-        }
       });
     } catch (error) {
       if (error instanceof Error && error.name === 'SHEET_STATE_CONFLICT') {
@@ -228,17 +238,75 @@ export async function POST(
       });
     }
 
+    await markSheetDubidocSignPending(sheet.id);
+
     const pdfResult = await generateAndStoreSheetPdf(sheet.id);
     if (!pdfResult.ok) {
       console.error('[pdf] failed to generate sheet pdf', {
         sheetId: sheet.id,
         message: pdfResult.message,
       });
+      const message = 'Не вдалося підготувати документ для підписання. Спробуйте ще раз.';
+      await markSheetDubidocSignFailed(sheet.id, message);
+      return apiErrorResponse({
+        status: 500,
+        code: 'VOTE_SIGN_PREPARE_FAILED',
+        message,
+      });
     } else if (pdfResult.generationMs > PDF_TARGET_MS) {
       console.warn(
         `[pdf] Sheet ${sheet.id} generated in ${pdfResult.generationMs}ms (target ${PDF_TARGET_MS}ms)`,
       );
     }
+
+    let redirectUrl: string | null = null;
+    try {
+      redirectUrl = await ensureSheetSigningRedirectUrl(sheet.id);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === OWNER_EMAIL_REQUIRED_ERROR ||
+          error.name === ORGANIZER_EMAIL_REQUIRED_ERROR ||
+          error.name === SIGNERS_EMAIL_CONFLICT_ERROR)
+      ) {
+        const message =
+          error.name === SIGNERS_EMAIL_CONFLICT_ERROR
+            ? 'Email співвласника та уповноваженої особи мають відрізнятися.'
+            : 'Налаштування підписання неповні. Зверніться до уповноваженої особи ОСББ.';
+        await markSheetDubidocSignFailed(sheet.id, message);
+        return apiErrorResponse({
+          status: 409,
+          code: 'VOTE_SIGNING_NOT_CONFIGURED',
+          message,
+        });
+      }
+
+      console.error('[vote:submit] failed to prepare Dubidoc signing link', {
+        sheetId: sheet.id,
+        token,
+        error,
+      });
+
+      const message = 'Сервіс підписання тимчасово недоступний. Спробуйте ще раз.';
+      await markSheetDubidocSignFailed(sheet.id, message);
+      return apiErrorResponse({
+        status: 502,
+        code: 'VOTE_SIGNING_UNAVAILABLE',
+        message,
+      });
+    }
+
+    if (!redirectUrl) {
+      const message = 'Не вдалося підготувати документ для підписання. Спробуйте ще раз.';
+      await markSheetDubidocSignFailed(sheet.id, message);
+      return apiErrorResponse({
+        status: 500,
+        code: 'VOTE_SIGN_PREPARE_FAILED',
+        message,
+      });
+    }
+
+    await clearSheetDubidocSignState(sheet.id);
 
     const updatedSheet = await getVoteSheetByToken(token);
     if (!updatedSheet) {
@@ -251,12 +319,19 @@ export async function POST(
 
     const response: VoteSubmitResponseDto = {
       ok: true,
-      message: 'Голос прийнято. Очікуємо підпису уповноваженої особи.',
+      message: 'Відповіді збережено. Підпишіть документ у Dubidoc, щоб зафіксувати голос.',
       sheet: updatedSheet,
+      redirectUrl: redirectUrl ?? undefined,
     };
 
     return NextResponse.json(response);
   } catch (error) {
+    if (signStateSheetId) {
+      await markSheetDubidocSignFailed(
+        signStateSheetId,
+        'Сервіс підписання тимчасово недоступний. Спробуйте ще раз.',
+      );
+    }
     console.error('[vote:submit] failed', { token, error });
     return apiErrorResponse({
       status: 500,

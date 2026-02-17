@@ -86,6 +86,12 @@ export default async function OwnersPage({ searchParams }: OwnersPageProps) {
                 },
               },
               {
+                email: {
+                  contains: query,
+                  mode: 'insensitive',
+                },
+              },
+              {
                 apartmentNumber: {
                   contains: query,
                   mode: 'insensitive',
@@ -240,6 +246,10 @@ export default async function OwnersPage({ searchParams }: OwnersPageProps) {
                         <p className="text-muted-foreground">
                           Телефон:{' '}
                           <span className="text-foreground font-medium">{owner.phone ?? '—'}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          Email:{' '}
+                          <span className="text-foreground font-medium">{owner.email ?? '—'}</span>
                         </p>
                         <p className="text-muted-foreground flex min-w-0 items-center gap-1">
                           <span className="shrink-0">Документ:</span>

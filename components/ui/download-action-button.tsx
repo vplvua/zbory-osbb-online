@@ -9,12 +9,13 @@ import { toast } from '@/lib/toast/client';
 
 type DownloadActionButtonProps = {
   href: string;
-  label: string;
-  pendingLabel?: string;
+  label: ReactNode;
+  pendingLabel?: ReactNode;
   variant?: 'primary' | 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive';
   className?: string;
   icon?: ReactNode;
   disabled?: boolean;
+  onDownloadStart?: () => void;
 };
 
 const UNKNOWN_DOWNLOAD_ERROR_MESSAGE = 'Не вдалося завантажити файл. Спробуйте ще раз.';
@@ -23,8 +24,10 @@ const DOWNLOAD_ERROR_MAP: ApiErrorCodeMap = {
   DOWNLOAD_INVALID_KIND: 'Невірний тип файлу.',
   DOWNLOAD_SHEET_NOT_FOUND: 'Листок не знайдено.',
   DOWNLOAD_SHEET_NOT_SIGNED: 'Завантаження доступне лише після повного підписання листка.',
+  DOWNLOAD_SHEET_NOT_READY: 'Завантаження стане доступним після прийняття голосу.',
   DOWNLOAD_PDF_NOT_AVAILABLE: 'PDF ще недоступний.',
   DOWNLOAD_SIGNED_NOT_AVAILABLE: 'Підписаний контейнер ще недоступний.',
+  DOWNLOAD_PROVIDER_FILE_NOT_AVAILABLE: 'Файли підписання ще недоступні. Спробуйте трохи пізніше.',
   DOWNLOAD_PREPARE_FAILED: 'Не вдалося підготувати файл для завантаження.',
 };
 
@@ -54,6 +57,7 @@ export function DownloadActionButton({
   className,
   icon,
   disabled = false,
+  onDownloadStart,
 }: DownloadActionButtonProps) {
   const downloadLockRef = useRef(false);
   const [isPending, setIsPending] = useState(false);
@@ -67,6 +71,7 @@ export function DownloadActionButton({
     downloadLockRef.current = true;
     setError(null);
     setIsPending(true);
+    onDownloadStart?.();
 
     try {
       const response = await fetch(href, { method: 'GET' });
