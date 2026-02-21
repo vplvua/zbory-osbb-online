@@ -580,4 +580,13 @@ export class DubidocApiSigningService implements DocumentSigningService {
       path: `/api/v1/documents/${encodeURIComponent(documentId)}/links`,
     });
   }
+
+  async archiveDocument(documentId: string): Promise<void> {
+    await this.requestJson<unknown>({
+      method: 'POST',
+      path: `/api/v1/documents/${encodeURIComponent(documentId)}/to-archive`,
+      // Dubidoc requires Content-Type for this endpoint even when payload is empty.
+      body: {},
+    });
+  }
 }

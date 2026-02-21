@@ -25,6 +25,7 @@ export interface DocumentSigningService {
     variant: DocumentDownloadVariant,
   ): Promise<DocumentDownloadResult>;
   revokePublicLinks(documentId: string): Promise<void>;
+  archiveDocument(documentId: string): Promise<void>;
 }
 
 export function isDubidocConfigured(): boolean {

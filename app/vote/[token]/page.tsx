@@ -237,6 +237,7 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
             initialNow={new Date().toISOString()}
             questions={sheet.questions}
             initiallyExpired={new Date(sheet.expiresAt) <= new Date()}
+            hasActiveSigningSession={sheet.hasDubidocDocument}
           />
         </>
       ) : (

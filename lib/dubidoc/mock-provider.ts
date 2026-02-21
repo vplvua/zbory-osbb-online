@@ -19,6 +19,7 @@ type MockDocumentRecord = {
   ownerSignedAt: Date | null;
   organizerSignedAt: Date | null;
   signingLinkToken: string | null;
+  archived: boolean;
 };
 
 const mockDocuments = new Map<string, MockDocumentRecord>();
@@ -143,6 +144,7 @@ export class MockDocumentSigningService implements DocumentSigningService {
       ownerSignedAt: null,
       organizerSignedAt: null,
       signingLinkToken: null,
+      archived: false,
     });
 
     return { documentId };
@@ -178,6 +180,12 @@ export class MockDocumentSigningService implements DocumentSigningService {
     void days;
 
     const document = requireMockDocument(documentId);
+    if (document.archived) {
+      throw new PermanentError('[Dubidoc mock] Document is archived.', {
+        code: 'DUBIDOC_MOCK_ARCHIVED',
+      });
+    }
+
     if (!document.signingLinkToken) {
       document.signingLinkToken = randomUUID();
     }
@@ -208,6 +216,12 @@ export class MockDocumentSigningService implements DocumentSigningService {
 
   async revokePublicLinks(documentId: string): Promise<void> {
     const document = requireMockDocument(documentId);
+    document.signingLinkToken = null;
+  }
+
+  async archiveDocument(documentId: string): Promise<void> {
+    const document = requireMockDocument(documentId);
+    document.archived = true;
     document.signingLinkToken = null;
   }
 }
