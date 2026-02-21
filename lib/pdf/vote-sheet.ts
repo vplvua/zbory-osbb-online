@@ -596,11 +596,9 @@ function drawOwnerDetails(context: RenderContext, input: VoteSheetPdfInput) {
   ]
     .filter(Boolean)
     .join(', ');
-  const ownershipDocument = normalizeOrDash(input.owner.ownershipDocument);
-
-  const representative = normalizeText(
-    [input.owner.representativeName, input.owner.representativeDocument].filter(Boolean).join(', '),
-  );
+  const ownershipDocumentRaw = normalizeText(input.owner.ownershipDocument);
+  const ownershipDocument = ownershipDocumentRaw || '—';
+  const representativeDocumentRaw = normalizeText(input.owner.representativeDocument ?? '');
 
   drawLabeledField(context, '1. Дата опитування:', formatDate(input.surveyDate));
   drawLabeledField(context, "2. Прізвище ім'я по-батькові співвласника:", ownerName);
@@ -620,12 +618,15 @@ function drawOwnerDetails(context: RenderContext, input: VoteSheetPdfInput) {
     '6. Частка власності:',
     `${formatShareFraction(input.owner.ownershipNumerator, input.owner.ownershipDenominator)} (${formatDecimal(input.owner.ownedArea, 2)} м²)`,
   );
-  drawLabeledField(
-    context,
-    '7. У разі необхідності - документ, що надає повноваження на голосуванні від імені співвласника (для представника):',
-    representative || '____________________________________',
-    { gapAfter: 12 },
-  );
+
+  if (representativeDocumentRaw) {
+    drawLabeledField(
+      context,
+      '7. Документ, що надає повноваження на голосуванні від імені співвласника (для представника):',
+      representativeDocumentRaw,
+      { gapAfter: 12 },
+    );
+  }
 }
 
 function getTableGeometry(): TableGeometry {
