@@ -15,11 +15,11 @@ describe('vote sheet pdf generator', () => {
         type: 'GENERAL',
       },
       osbb: {
-        name: 'Test OSBB',
-        address: 'Test street 1',
+        name: 'ОСББ Добрі сусіди',
+        address: 'вул. Шевченка, 1',
       },
       owner: {
-        shortName: 'Petrenko I.P.',
+        shortName: 'Ґалаган Є.Ї.',
         apartmentNumber: '15',
         totalArea: '67.50',
         ownershipDocument: 'Договір купівлі-продажу №123',
@@ -29,18 +29,18 @@ describe('vote sheet pdf generator', () => {
         representativeName: null,
         representativeDocument: null,
       },
-      organizerName: 'Olena Ivanenko',
+      organizerName: 'Іващенко Ґалина Євгенівна',
       questions: [
         {
           orderNumber: 1,
-          text: 'Budget approval',
-          proposal: 'Approve budget for 2026',
+          text: 'Затвердження кошторису',
+          proposal: 'Затвердити кошторис на 2026 рік',
           vote: 'FOR',
         },
         {
           orderNumber: 2,
-          text: 'Repair funding',
-          proposal: 'Allocate reserve fund for repairs',
+          text: 'Фінансування ремонту',
+          proposal: 'Виділити резервний фонд на ремонт',
           vote: 'AGAINST',
         },
       ],
@@ -52,6 +52,7 @@ describe('vote sheet pdf generator', () => {
     assert.ok(rawPdf.includes('/Identity-H'), 'Expected Unicode font encoding in generated PDF');
     assert.ok(!rawPdf.includes('/WinAnsiEncoding'), 'Expected no WinAnsi fallback encoding');
     assert.ok(!rawPdf.includes('/BaseFont /Helvetica'), 'Expected no Helvetica fallback font');
+    assert.ok(rawPdf.includes('DejaVuSans'), 'Expected bundled DejaVuSans font in generated PDF');
     assert.ok(
       result.generationMs < 3000,
       `Expected generation < 3000ms, got ${result.generationMs}ms`,
