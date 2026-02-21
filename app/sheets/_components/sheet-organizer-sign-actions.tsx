@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import RefreshIcon from '@/components/icons/refresh-icon';
 import SignatureIcon from '@/components/icons/signature-icon';
 import { Button } from '@/components/ui/button';
@@ -31,10 +31,33 @@ export default function SheetOrganizerSignActions({
     refreshAction,
     initialState,
   );
+  const pendingSignWindowRef = useRef<Window | null>(null);
 
   const isPending = signPending || refreshPending;
   const error = signState.error ?? refreshState.error;
   useActionErrorToast(error);
+
+  useEffect(() => {
+    if (signPending) {
+      return;
+    }
+
+    const pendingWindow = pendingSignWindowRef.current;
+    if (signState.signingUrl) {
+      if (pendingWindow && !pendingWindow.closed) {
+        pendingWindow.location.href = signState.signingUrl;
+      } else {
+        window.open(signState.signingUrl, '_blank', 'noopener,noreferrer');
+      }
+      pendingSignWindowRef.current = null;
+      return;
+    }
+
+    if (pendingWindow && !pendingWindow.closed) {
+      pendingWindow.close();
+    }
+    pendingSignWindowRef.current = null;
+  }, [signPending, signState.signingUrl]);
 
   return (
     <div className="space-y-2">
@@ -43,7 +66,18 @@ export default function SheetOrganizerSignActions({
         <form action={signFormAction} data-submitting={signPending ? 'true' : 'false'}>
           <input type="hidden" name="sheetId" value={sheetId} />
           {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
-          <Button type="submit" className="h-8 px-3 text-xs" disabled={disabled || isPending}>
+          <Button
+            type="submit"
+            className="h-8 px-3 text-xs"
+            disabled={disabled || isPending}
+            onClick={() => {
+              const nextWindow = window.open('', '_blank');
+              if (nextWindow) {
+                nextWindow.opener = null;
+              }
+              pendingSignWindowRef.current = nextWindow;
+            }}
+          >
             {signPending ? (
               <LoadingSpinner className="h-3.5 w-3.5" />
             ) : (

@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { Prisma, SheetStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getSessionPayload } from '@/lib/auth/session-token';
@@ -27,6 +26,7 @@ import {
 
 export type SheetFormState = {
   error?: string;
+  signingUrl?: string;
 };
 
 const PUBLIC_TOKEN_RETRY_LIMIT = 3;
@@ -453,7 +453,7 @@ export async function organizerSignSheetAction(
   }
 
   await clearSheetDubidocSignState(sheet.id);
-  redirect(signingUrl);
+  return { signingUrl };
 }
 
 export async function refreshSheetSigningStatusAction(
