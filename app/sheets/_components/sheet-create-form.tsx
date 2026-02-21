@@ -22,6 +22,7 @@ type SheetCreateFormProps = {
     id: string;
     number: string;
     dateLabel: string;
+    questionsCount: number;
   }>;
   owners: Array<{
     id: string;
@@ -100,6 +101,10 @@ export default function SheetCreateForm({
   const [ownerSearch, setOwnerSearch] = useState('');
 
   const selectedProtocol = protocols.find((protocol) => protocol.id === selectedProtocolId) ?? null;
+  const selectedProtocolHasQuestions = (selectedProtocol?.questionsCount ?? 0) > 0;
+  const protocolsWithoutQuestionsCount = protocols.filter(
+    (protocol) => protocol.questionsCount === 0,
+  ).length;
   const selectedOwner =
     selectedOwnerIds.length === 1
       ? (owners.find((owner) => owner.id === selectedOwnerIds[0]) ?? null)
@@ -213,6 +218,16 @@ export default function SheetCreateForm({
                   </span>
                   <ChevronDownIcon className="text-muted-foreground h-4 w-4 shrink-0" />
                 </button>
+                {protocolsWithoutQuestionsCount > 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    Протоколи без питань недоступні для створення листка.
+                  </p>
+                ) : null}
+                {selectedProtocol && !selectedProtocolHasQuestions ? (
+                  <p className="text-sm text-amber-700">
+                    У вибраному протоколі немає питань. Додайте хоча б одне питання у протоколі.
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -391,20 +406,32 @@ export default function SheetCreateForm({
                   ) : (
                     filteredProtocols.map((protocol) => {
                       const isActive = protocol.id === selectedProtocolId;
+                      const hasQuestions = protocol.questionsCount > 0;
                       return (
                         <button
                           key={protocol.id}
                           type="button"
                           className={`border-border hover:bg-surface-muted flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm ${
                             isActive ? 'border-brand bg-brand/10' : ''
-                          }`}
+                          } ${hasQuestions ? '' : 'cursor-not-allowed opacity-60 hover:bg-transparent'}`}
+                          disabled={!hasQuestions}
                           onClick={() => {
+                            if (!hasQuestions) {
+                              return;
+                            }
                             setSelectedProtocolId(protocol.id);
                             setActiveSelector(null);
                           }}
                         >
-                          <span className="font-medium">
-                            {formatProtocolLabel(protocol.number, protocol.dateLabel)}
+                          <span className="space-y-0.5">
+                            <span className="block font-medium">
+                              {formatProtocolLabel(protocol.number, protocol.dateLabel)}
+                            </span>
+                            {!hasQuestions ? (
+                              <span className="text-muted-foreground block text-xs">
+                                Немає питань у протоколі.
+                              </span>
+                            ) : null}
                           </span>
                           {isActive ? <CheckIcon className="text-brand h-4 w-4" /> : null}
                         </button>

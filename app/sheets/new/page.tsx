@@ -98,6 +98,11 @@ export default async function SheetNewPage({ searchParams }: SheetNewPageProps) 
         id: true,
         number: true,
         date: true,
+        _count: {
+          select: {
+            questions: true,
+          },
+        },
       },
     }),
     prisma.owner.findMany({
@@ -118,6 +123,9 @@ export default async function SheetNewPage({ searchParams }: SheetNewPageProps) 
     }),
   ]);
 
+  const protocolsWithQuestionsCount = protocols.filter(
+    (protocol) => protocol._count.questions > 0,
+  ).length;
   const defaultSurveyDate = new Date().toISOString().split('T')[0];
 
   return (
@@ -131,12 +139,15 @@ export default async function SheetNewPage({ searchParams }: SheetNewPageProps) 
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8">
-          {protocols.length === 0 || owners.length === 0 ? (
+          {protocols.length === 0 || owners.length === 0 || protocolsWithQuestionsCount === 0 ? (
             <Card>
               <CardContent className="space-y-4 py-6">
                 <p className="text-muted-foreground text-sm">
-                  Для створення листка потрібні хоча б один протокол і один співвласник у вибраному
-                  ОСББ.
+                  {protocols.length === 0
+                    ? 'Для створення листка потрібні хоча б один протокол і один співвласник у вибраному ОСББ.'
+                    : owners.length === 0
+                      ? 'Для створення листка потрібні співвласники у вибраному ОСББ.'
+                      : 'У жодному протоколі немає питань. Щоб створити листок опитування, додайте хоча б одне питання до протоколу.'}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {protocols.length === 0 ? (
@@ -155,6 +166,13 @@ export default async function SheetNewPage({ searchParams }: SheetNewPageProps) 
                       </Button>
                     </Link>
                   ) : null}
+                  {protocols.length > 0 && protocolsWithQuestionsCount === 0 ? (
+                    <Link href={`/osbb/${selectedOsbb.id}/protocols`}>
+                      <Button type="button" variant="outline">
+                        Перейти до протоколів
+                      </Button>
+                    </Link>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -168,6 +186,7 @@ export default async function SheetNewPage({ searchParams }: SheetNewPageProps) 
                 id: protocol.id,
                 number: protocol.number,
                 dateLabel: DATE_FORMATTER.format(protocol.date),
+                questionsCount: protocol._count.questions,
               }))}
               owners={owners.map((owner) => ({
                 id: owner.id,

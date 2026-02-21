@@ -203,11 +203,23 @@ export async function createSheetAction(
       id: true,
       date: true,
       type: true,
+      _count: {
+        select: {
+          questions: true,
+        },
+      },
     },
   });
 
   if (!protocol) {
     return { error: 'Протокол не знайдено.' };
+  }
+
+  if (protocol._count.questions === 0) {
+    return {
+      error:
+        'У вибраному протоколі немає питань. Додайте хоча б одне питання у протоколі та спробуйте ще раз.',
+    };
   }
 
   const owners = await prisma.owner.findMany({
