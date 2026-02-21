@@ -1,12 +1,14 @@
 'use client';
 
 import { type ReactNode, type SVGProps, useEffect, useId, useMemo, useState } from 'react';
+import DownloadIcon from '@/components/icons/download-icon';
 import { Button } from '@/components/ui/button';
 import { DownloadActionButton } from '@/components/ui/download-action-button';
 
 type SheetDownloadActionsProps = {
   downloadBasePath: string;
   hasPdf: boolean;
+  hasDubidocDocument: boolean;
   isSigned: boolean;
 };
 
@@ -33,35 +35,17 @@ function PdfFileIcon({ className }: { className?: string }) {
   );
 }
 
-function PdfVisualIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <path
-        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path d="M14 2v5h5" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M8 14.5c.8-1.1 2.1-2 4-2s3.2.9 4 2c-.8 1.1-2.1 2-4 2s-3.2-.9-4-2Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <circle cx="12" cy="14.5" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
 function SignedFileIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <circle cx="8.5" cy="10.5" r="3.5" stroke="currentColor" strokeWidth="2" />
       <path
-        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
+        d="M12 10.5h9l-2 2 1.5 1.5-1.5 1.5-1.5-1.5-1.5 1.5h-2"
         stroke="currentColor"
         strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      <path d="M14 2v5h5" stroke="currentColor" strokeWidth="2" />
-      <path d="m9 14 2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -80,20 +64,6 @@ function PrintIcon({ className }: { className?: string }) {
   );
 }
 
-function ProtocolIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <path
-        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path d="M14 2v5h5" stroke="currentColor" strokeWidth="2" />
-      <path d="M8 13h8M8 16h8M8 10h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function CloseIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
@@ -106,15 +76,18 @@ function CloseIcon(props: SVGProps<SVGSVGElement>) {
 export default function SheetDownloadActions({
   downloadBasePath,
   hasPdf,
+  hasDubidocDocument,
   isSigned,
 }: SheetDownloadActionsProps) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
-  const hasAvailableDownloads = hasPdf || isSigned;
+  const canDownloadOriginal = hasPdf || hasDubidocDocument;
+  const canDownloadDubidocVariants = hasDubidocDocument || isSigned;
+  const hasAvailableDownloads = canDownloadOriginal || canDownloadDubidocVariants;
 
   const downloadOptions = useMemo<DownloadOption[]>(() => {
     const options: DownloadOption[] = [];
-    if (hasPdf) {
+    if (canDownloadOriginal) {
       options.push({
         id: 'original',
         href: `${downloadBasePath}/original`,
@@ -123,17 +96,9 @@ export default function SheetDownloadActions({
         pendingLabel: 'Завантаження PDF...',
         icon: <PdfFileIcon className="h-5 w-5" />,
       });
-      options.push({
-        id: 'visualization',
-        href: `${downloadBasePath}/visualization`,
-        title: 'Візуалізація PDF',
-        description: 'Відображення результату підписання',
-        pendingLabel: 'Завантаження PDF...',
-        icon: <PdfVisualIcon className="h-5 w-5" />,
-      });
     }
 
-    if (isSigned) {
+    if (canDownloadDubidocVariants) {
       options.push({
         id: 'signed',
         href: `${downloadBasePath}/signed`,
@@ -145,23 +110,15 @@ export default function SheetDownloadActions({
       options.push({
         id: 'printable',
         href: `${downloadBasePath}/printable`,
-        title: 'Версія для друку',
-        description: 'Документ для друку',
+        title: 'Версію для друку',
+        description: 'Документ з протоколом підписання',
         pendingLabel: 'Завантаження PDF...',
         icon: <PrintIcon className="h-5 w-5" />,
-      });
-      options.push({
-        id: 'protocol',
-        href: `${downloadBasePath}/protocol`,
-        title: 'Протокол підписання',
-        description: 'Технічний PDF з даними підписів',
-        pendingLabel: 'Завантаження PDF...',
-        icon: <ProtocolIcon className="h-5 w-5" />,
       });
     }
 
     return options;
-  }, [downloadBasePath, hasPdf, isSigned]);
+  }, [canDownloadDubidocVariants, canDownloadOriginal, downloadBasePath]);
 
   useEffect(() => {
     if (!open) {
@@ -195,6 +152,7 @@ export default function SheetDownloadActions({
         }}
         disabled={!hasAvailableDownloads}
       >
+        <DownloadIcon className="h-4 w-4" />
         Завантажити файли
       </Button>
       {!hasAvailableDownloads ? (

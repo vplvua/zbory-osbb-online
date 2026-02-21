@@ -2,9 +2,10 @@ import { promises as fs } from 'node:fs';
 import { SheetStatus } from '@prisma/client';
 import { getDocumentSigningService, isDubidocConfigured } from '@/lib/dubidoc/adapter';
 import { prisma } from '@/lib/db/prisma';
-import type { DocumentDownloadVariant } from '@/lib/dubidoc/types';
+import { classifyError } from '@/lib/errors';
+import type { DocumentDownloadResult, DocumentDownloadVariant } from '@/lib/dubidoc/types';
 
-export type SheetDownloadKind = 'original' | 'visualization' | 'signed' | 'printable' | 'protocol';
+export type SheetDownloadKind = 'original' | 'signed' | 'printable';
 
 export type PreparedDownload = {
   bytes: Uint8Array;
@@ -19,6 +20,19 @@ type SheetDownloadRecord = {
   pdfFileUrl: string | null;
   dubidocDocumentId: string | null;
 };
+
+function isProviderFilePending(code: string | undefined): boolean {
+  if (!code) {
+    return false;
+  }
+
+  return (
+    code === 'DUBIDOC_MOCK_NOT_SIGNED' ||
+    code === 'DUBIDOC_HTTP_404' ||
+    code === 'DUBIDOC_HTTP_409' ||
+    code === 'DUBIDOC_HTTP_422'
+  );
+}
 
 function makeMockP7s(sheetId: string, sourcePdfSize: number): Uint8Array {
   const text = [
@@ -53,10 +67,6 @@ function getFallbackFilename(sheetId: string, variant: DocumentDownloadVariant):
     return `${baseName}-printable.pdf`;
   }
 
-  if (variant === 'protocol') {
-    return `${baseName}-protocol.pdf`;
-  }
-
   return `${baseName}.pdf`;
 }
 
@@ -64,31 +74,25 @@ function getFallbackContentType(variant: DocumentDownloadVariant): string {
   return variant === 'signed' ? 'application/pkcs7-signature' : 'application/pdf';
 }
 
-function mapKindToProviderVariant(
-  kind: SheetDownloadKind,
-  status: SheetStatus,
-): DocumentDownloadVariant {
-  if (kind === 'visualization') {
-    return status === SheetStatus.SIGNED ? 'printable' : 'original';
+function mapKindToProviderVariant(kind: SheetDownloadKind): DocumentDownloadVariant {
+  if (kind === 'printable') {
+    // Dubidoc returns the signature protocol page in `file=protocol`.
+    return 'protocol';
   }
 
-  if (kind === 'signed' || kind === 'printable' || kind === 'protocol') {
-    return kind;
-  }
-
-  return 'original';
+  return kind;
 }
 
 async function loadProviderVariantDownload(
   sheet: SheetDownloadRecord,
   kind: SheetDownloadKind,
 ): Promise<PreparedDownload> {
-  const variant = mapKindToProviderVariant(kind, sheet.status);
+  const variant = mapKindToProviderVariant(kind);
 
   if (!sheet.dubidocDocumentId) {
     // Transitional fallback: legacy records may have only local PDF path and no Dubidoc document id.
     // TODO: Remove local file fallback after one-off backfill to Dubidoc artifacts.
-    if (kind === 'original' || kind === 'visualization') {
+    if (kind === 'original') {
       const pdfBytes = await readPdfBytes(sheet);
       return {
         bytes: pdfBytes,
@@ -122,7 +126,17 @@ async function loadProviderVariantDownload(
   }
 
   const signingService = getDocumentSigningService();
-  const downloaded = await signingService.downloadDocumentFile(sheet.dubidocDocumentId, variant);
+  let downloaded: DocumentDownloadResult;
+  try {
+    downloaded = await signingService.downloadDocumentFile(sheet.dubidocDocumentId, variant);
+  } catch (error) {
+    const classified = classifyError(error);
+    if (isProviderFilePending(classified.code)) {
+      throw new Error('DUBIDOC_DOCUMENT_NOT_AVAILABLE');
+    }
+
+    throw error;
+  }
 
   return {
     bytes: downloaded.bytes,
@@ -136,26 +150,15 @@ async function prepareDownload(
   sheet: SheetDownloadRecord,
   kind: SheetDownloadKind,
 ): Promise<PreparedDownload> {
-  const baseName = getBaseFilename(sheet.id);
-
-  if (kind === 'signed' || kind === 'printable' || kind === 'protocol') {
-    if (sheet.status !== SheetStatus.SIGNED) {
+  if (kind === 'signed' || kind === 'printable') {
+    if (!sheet.dubidocDocumentId && sheet.status !== SheetStatus.SIGNED) {
       throw new Error('SHEET_NOT_SIGNED');
     }
 
     return loadProviderVariantDownload(sheet, kind);
   }
 
-  const prepared = await loadProviderVariantDownload(sheet, kind);
-  if (kind === 'visualization' && !prepared.contentDisposition) {
-    // Keep compatibility filename when provider did not send content-disposition.
-    return {
-      ...prepared,
-      filename: `${baseName}-visualization.pdf`,
-    };
-  }
-
-  return prepared;
+  return loadProviderVariantDownload(sheet, kind);
 }
 
 export async function getOrganizerSheetForDownload(

@@ -1,6 +1,8 @@
 'use client';
 
 import { useActionState } from 'react';
+import RefreshIcon from '@/components/icons/refresh-icon';
+import SignatureIcon from '@/components/icons/signature-icon';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -42,8 +44,12 @@ export default function SheetOrganizerSignActions({
           <input type="hidden" name="sheetId" value={sheetId} />
           {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
           <Button type="submit" className="h-8 px-3 text-xs" disabled={disabled || isPending}>
-            {signPending ? <LoadingSpinner className="h-3.5 w-3.5" /> : null}
-            {signPending ? 'Готуємо підпис...' : 'Підписати в Dubidoc'}
+            {signPending ? (
+              <LoadingSpinner className="h-3.5 w-3.5" />
+            ) : (
+              <SignatureIcon className="h-3.5 w-3.5" />
+            )}
+            {signPending ? 'Готуємо підпис...' : 'Підписати'}
           </Button>
         </form>
 
@@ -56,7 +62,11 @@ export default function SheetOrganizerSignActions({
             className="h-8 px-3 text-xs"
             disabled={disabled || isPending}
           >
-            {refreshPending ? <LoadingSpinner className="h-3.5 w-3.5" /> : null}
+            {refreshPending ? (
+              <LoadingSpinner className="h-3.5 w-3.5" />
+            ) : (
+              <RefreshIcon className="h-3.5 w-3.5" />
+            )}
             {refreshPending ? 'Оновлюємо...' : 'Оновити статус'}
           </Button>
         </form>

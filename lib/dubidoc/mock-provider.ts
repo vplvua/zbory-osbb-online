@@ -196,7 +196,7 @@ export class MockDocumentSigningService implements DocumentSigningService {
     if (variant === 'signed') {
       const status = resolveStatus(document);
 
-      if (status.status !== 'ORGANIZER_SIGNED') {
+      if (status.status === 'CREATED') {
         throw new TemporaryError('[Dubidoc mock] Document is not fully signed yet.', {
           code: 'DUBIDOC_MOCK_NOT_SIGNED',
         });
