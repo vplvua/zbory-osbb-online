@@ -1,3 +1,4 @@
+import { promises as fs } from 'node:fs';
 import { prisma } from '@/lib/db/prisma';
 import { formatOwnerFullName, formatOwnerShortName } from '@/lib/owner/name';
 import { generateVoteSheetPdf, writeVoteSheetPdfToTemp } from '@/lib/pdf/vote-sheet';
@@ -9,6 +10,17 @@ export type GenerateSheetPdfResult =
       ok: true;
       generationMs: number;
       filePath: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+type GenerateSheetPdfBytesResult =
+  | {
+      ok: true;
+      generationMs: number;
+      pdfBytes: Uint8Array;
     }
   | {
       ok: false;
@@ -88,6 +100,106 @@ async function loadSheetPdfContext(sheetId: string) {
   });
 }
 
+function buildVoteSheetPdfInput(
+  sheet: NonNullable<Awaited<ReturnType<typeof loadSheetPdfContext>>>,
+) {
+  const answerMap = new Map(sheet.answers.map((answer) => [answer.questionId, answer.vote]));
+
+  return {
+    sheetId: sheet.id,
+    generatedAt: new Date(),
+    surveyDate: sheet.surveyDate,
+    protocol: {
+      number: sheet.protocol.number,
+      date: sheet.protocol.date,
+      type: sheet.protocol.type,
+    },
+    osbb: {
+      name: sheet.protocol.osbb.name,
+      address: sheet.protocol.osbb.address,
+    },
+    owner: {
+      fullName: formatOwnerFullName(sheet.owner),
+      shortName: formatOwnerShortName(sheet.owner),
+      apartmentNumber: sheet.owner.apartmentNumber,
+      totalArea: sheet.owner.totalArea.toString(),
+      ownershipDocument: sheet.owner.ownershipDocument,
+      ownershipNumerator: sheet.owner.ownershipNumerator,
+      ownershipDenominator: sheet.owner.ownershipDenominator,
+      ownedArea: sheet.owner.ownedArea.toString(),
+      representativeName: sheet.owner.representativeName,
+      representativeDocument: sheet.owner.representativeDocument,
+    },
+    organizerName: sheet.protocol.osbb.organizerName ?? '',
+    questions: sheet.protocol.questions.map((question) => ({
+      orderNumber: question.orderNumber,
+      text: question.text,
+      proposal: question.proposal,
+      vote: answerMap.get(question.id) ?? null,
+    })),
+  };
+}
+
+async function generateSheetPdfBytes(sheetId: string): Promise<GenerateSheetPdfBytesResult> {
+  const sheet = await loadSheetPdfContext(sheetId);
+  if (!sheet) {
+    return { ok: false, message: 'Листок не знайдено.' };
+  }
+
+  try {
+    const pdfResult = await generateVoteSheetPdf(buildVoteSheetPdfInput(sheet));
+    return { ok: true, generationMs: pdfResult.generationMs, pdfBytes: pdfResult.pdfBytes };
+  } catch (error) {
+    return { ok: false, message: toErrorMessage(error) };
+  }
+}
+
+function isMissingPdfFileError(error: unknown): boolean {
+  return Boolean(
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'ENOENT',
+  );
+}
+
+export async function loadSheetPdfBytesWithFallback(input: {
+  sheetId: string;
+  pdfFileUrl: string | null;
+}): Promise<Uint8Array> {
+  let missingTempFile = false;
+
+  if (input.pdfFileUrl) {
+    try {
+      return await fs.readFile(input.pdfFileUrl);
+    } catch (error) {
+      if (!isMissingPdfFileError(error)) {
+        throw error;
+      }
+
+      missingTempFile = true;
+    }
+  }
+
+  if (missingTempFile) {
+    console.warn('[pdf] missing temp artifact, regenerating from DB context', {
+      sheetId: input.sheetId,
+      pdfFileUrl: input.pdfFileUrl,
+    });
+  }
+
+  const regenerated = await generateSheetPdfBytes(input.sheetId);
+  if (!regenerated.ok) {
+    if (regenerated.message === 'Листок не знайдено.') {
+      throw new Error('PDF_NOT_AVAILABLE');
+    }
+
+    throw new Error(`PDF_REGENERATE_FAILED: ${regenerated.message}`);
+  }
+
+  return regenerated.pdfBytes;
+}
+
 export async function generateAndStoreSheetPdf(sheetId: string): Promise<GenerateSheetPdfResult> {
   await prisma.sheet.updateMany({
     where: { id: sheetId },
@@ -98,54 +210,28 @@ export async function generateAndStoreSheetPdf(sheetId: string): Promise<Generat
     },
   });
 
-  const sheet = await loadSheetPdfContext(sheetId);
-  if (!sheet) {
-    return { ok: false, message: 'Листок не знайдено.' };
+  const generated = await generateSheetPdfBytes(sheetId);
+  if (!generated.ok) {
+    await prisma.sheet.updateMany({
+      where: { id: sheetId },
+      data: {
+        pdfUploadPending: false,
+        errorPending: true,
+        pdfLastError: generated.message,
+      },
+    });
+
+    return { ok: false, message: generated.message };
   }
 
   try {
-    const answerMap = new Map(sheet.answers.map((answer) => [answer.questionId, answer.vote]));
-    const pdfResult = await generateVoteSheetPdf({
-      sheetId: sheet.id,
-      generatedAt: new Date(),
-      surveyDate: sheet.surveyDate,
-      protocol: {
-        number: sheet.protocol.number,
-        date: sheet.protocol.date,
-        type: sheet.protocol.type,
-      },
-      osbb: {
-        name: sheet.protocol.osbb.name,
-        address: sheet.protocol.osbb.address,
-      },
-      owner: {
-        fullName: formatOwnerFullName(sheet.owner),
-        shortName: formatOwnerShortName(sheet.owner),
-        apartmentNumber: sheet.owner.apartmentNumber,
-        totalArea: sheet.owner.totalArea.toString(),
-        ownershipDocument: sheet.owner.ownershipDocument,
-        ownershipNumerator: sheet.owner.ownershipNumerator,
-        ownershipDenominator: sheet.owner.ownershipDenominator,
-        ownedArea: sheet.owner.ownedArea.toString(),
-        representativeName: sheet.owner.representativeName,
-        representativeDocument: sheet.owner.representativeDocument,
-      },
-      organizerName: sheet.protocol.osbb.organizerName ?? '',
-      questions: sheet.protocol.questions.map((question) => ({
-        orderNumber: question.orderNumber,
-        text: question.text,
-        proposal: question.proposal,
-        vote: answerMap.get(question.id) ?? null,
-      })),
-    });
-
     const pdfFilePath = await writeVoteSheetPdfToTemp({
-      sheetId: sheet.id,
-      pdfBytes: pdfResult.pdfBytes,
+      sheetId,
+      pdfBytes: generated.pdfBytes,
     });
 
     await prisma.sheet.update({
-      where: { id: sheet.id },
+      where: { id: sheetId },
       data: {
         pdfFileUrl: pdfFilePath,
         pdfUploadPending: false,
@@ -156,7 +242,7 @@ export async function generateAndStoreSheetPdf(sheetId: string): Promise<Generat
 
     return {
       ok: true,
-      generationMs: pdfResult.generationMs,
+      generationMs: generated.generationMs,
       filePath: pdfFilePath,
     };
   } catch (error) {
