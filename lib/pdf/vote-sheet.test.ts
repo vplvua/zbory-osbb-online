@@ -12,6 +12,7 @@ describe('vote sheet pdf generator', () => {
       protocol: {
         number: '12',
         date: new Date('2026-02-01T10:00:00.000Z'),
+        type: 'GENERAL',
       },
       osbb: {
         name: 'Test OSBB',
