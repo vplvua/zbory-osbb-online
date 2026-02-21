@@ -13,6 +13,7 @@ type VoteDraftSectionProps = {
   initialNow: string;
   questions: VoteSheetQuestionDto[];
   initiallyExpired: boolean;
+  hasActiveSigningSession: boolean;
 };
 
 export default function VoteDraftSection({
@@ -22,6 +23,7 @@ export default function VoteDraftSection({
   initialNow,
   questions,
   initiallyExpired,
+  hasActiveSigningSession,
 }: VoteDraftSectionProps) {
   const [isExpired, setIsExpired] = useState(initiallyExpired);
 
@@ -36,7 +38,12 @@ export default function VoteDraftSection({
       {isExpired ? (
         <ErrorAlert>Термін голосування завершено. Надсилання голосу недоступне.</ErrorAlert>
       ) : (
-        <VoteForm token={token} questions={questions} disabled={false} />
+        <VoteForm
+          token={token}
+          questions={questions}
+          disabled={false}
+          hasActiveSigningSession={hasActiveSigningSession}
+        />
       )}
     </section>
   );

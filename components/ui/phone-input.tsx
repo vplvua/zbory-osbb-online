@@ -88,7 +88,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         {name ? <input type="hidden" name={name} value={fullPhone} /> : null}
         <div
           className={cn(
-            'border-border bg-surface text-foreground focus-within:ring-ring focus-within:ring-offset-background flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm shadow-sm focus-within:ring-2 focus-within:ring-offset-2',
+            'phone-input-shell border-border bg-surface text-foreground focus-within:ring-ring focus-within:ring-offset-background flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm shadow-sm focus-within:ring-2 focus-within:ring-offset-2',
             disabled ? 'cursor-not-allowed opacity-50' : '',
             className,
           )}

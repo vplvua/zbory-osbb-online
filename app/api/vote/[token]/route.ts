@@ -2,8 +2,10 @@ import { SheetStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api/error-response';
 import { prisma } from '@/lib/db/prisma';
+import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
 import { generateAndStoreSheetPdf, PDF_TARGET_MS } from '@/lib/sheet/pdf-processing';
 import { isValidPublicToken } from '@/lib/tokens';
+import { hasAnswersChanged } from '@/lib/vote/signing-session';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
 import {
   ensureSheetSigningRedirectUrl,
@@ -74,6 +76,15 @@ function validateAnswerSet(
   return { ok: true };
 }
 
+function isDubidocDocumentNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error)) {
+    return false;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return code === 'DUBIDOC_HTTP_404' || code === 'DUBIDOC_MOCK_DOCUMENT_NOT_FOUND';
+}
+
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ token: string }> },
@@ -132,6 +143,12 @@ export async function POST(
     const sheet = await prisma.sheet.findUnique({
       where: { publicToken: token },
       include: {
+        answers: {
+          select: {
+            questionId: true,
+            vote: true,
+          },
+        },
         protocol: {
           select: {
             questions: {
@@ -181,6 +198,8 @@ export async function POST(
         message: answerSetValidation.message,
       });
     }
+
+    const answersChanged = hasAnswersChanged(sheet.answers, parsed.data.answers);
 
     try {
       await prisma.$transaction(async (tx) => {
@@ -240,23 +259,91 @@ export async function POST(
 
     await markSheetDubidocSignPending(sheet.id);
 
-    const pdfResult = await generateAndStoreSheetPdf(sheet.id);
-    if (!pdfResult.ok) {
-      console.error('[pdf] failed to generate sheet pdf', {
-        sheetId: sheet.id,
-        message: pdfResult.message,
+    let hasActiveDubidocDocument = Boolean(sheet.dubidocDocumentId);
+    if (answersChanged && sheet.dubidocDocumentId) {
+      const signingService = getDocumentSigningService();
+
+      try {
+        await signingService.revokePublicLinks(sheet.dubidocDocumentId);
+      } catch (error) {
+        if (!isDubidocDocumentNotFoundError(error)) {
+          console.error('[vote:submit] failed to revoke previous Dubidoc links', {
+            sheetId: sheet.id,
+            documentId: sheet.dubidocDocumentId,
+            error,
+          });
+          const message = 'Не вдалося підготувати оновлений документ для підписання.';
+          await markSheetDubidocSignFailed(sheet.id, message);
+          return apiErrorResponse({
+            status: 502,
+            code: 'VOTE_SIGNING_UNAVAILABLE',
+            message,
+          });
+        }
+      }
+
+      try {
+        await signingService.archiveDocument(sheet.dubidocDocumentId);
+      } catch (error) {
+        if (!isDubidocDocumentNotFoundError(error)) {
+          console.error('[vote:submit] failed to archive previous Dubidoc document', {
+            sheetId: sheet.id,
+            documentId: sheet.dubidocDocumentId,
+            error,
+          });
+          const message = 'Не вдалося підготувати оновлений документ для підписання.';
+          await markSheetDubidocSignFailed(sheet.id, message);
+          return apiErrorResponse({
+            status: 502,
+            code: 'VOTE_SIGNING_UNAVAILABLE',
+            message,
+          });
+        }
+      }
+
+      const resetResult = await prisma.sheet.updateMany({
+        where: {
+          id: sheet.id,
+          status: SheetStatus.DRAFT,
+          dubidocDocumentId: sheet.dubidocDocumentId,
+        },
+        data: {
+          dubidocDocumentId: null,
+          dubidocLastCheckedAt: null,
+          pdfFileUrl: null,
+        },
       });
-      const message = 'Не вдалося підготувати документ для підписання. Спробуйте ще раз.';
-      await markSheetDubidocSignFailed(sheet.id, message);
-      return apiErrorResponse({
-        status: 500,
-        code: 'VOTE_SIGN_PREPARE_FAILED',
-        message,
-      });
-    } else if (pdfResult.generationMs > PDF_TARGET_MS) {
-      console.warn(
-        `[pdf] Sheet ${sheet.id} generated in ${pdfResult.generationMs}ms (target ${PDF_TARGET_MS}ms)`,
-      );
+
+      if (resetResult.count === 0) {
+        return apiErrorResponse({
+          status: 409,
+          code: 'VOTE_STATE_CONFLICT',
+          message: 'Листок більше не доступний для подання.',
+        });
+      }
+
+      hasActiveDubidocDocument = false;
+    }
+
+    if (!hasActiveDubidocDocument) {
+      const pdfResult = await generateAndStoreSheetPdf(sheet.id);
+      if (!pdfResult.ok) {
+        console.error('[pdf] failed to generate sheet pdf', {
+          sheetId: sheet.id,
+          message: pdfResult.message,
+        });
+        const message = 'Не вдалося підготувати документ для підписання. Спробуйте ще раз.';
+        await markSheetDubidocSignFailed(sheet.id, message);
+        return apiErrorResponse({
+          status: 500,
+          code: 'VOTE_SIGN_PREPARE_FAILED',
+          message,
+        });
+      } else if (pdfResult.generationMs > PDF_TARGET_MS) {
+        console.warn(
+          `[pdf] Sheet ${sheet.id} generated in ${pdfResult.generationMs}ms (target ${PDF_TARGET_MS}ms)`,
+        );
+      }
     }
 
     let redirectUrl: string | null = null;

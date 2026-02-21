@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { isFormValid } from '@/lib/forms/is-form-valid';
 import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type SheetCreateSaveButtonProps = {
@@ -35,7 +36,7 @@ export default function SheetCreateSaveButton({ formId }: SheetCreateSaveButtonP
     const updateState = () => {
       const hasProtocol = hasValueField(form, 'protocolId');
       const hasOwner = hasOwnerSelection(form);
-      setCanSubmit(form.checkValidity() && hasProtocol && hasOwner);
+      setCanSubmit(isFormValid(form) && hasProtocol && hasOwner);
     };
 
     updateState();

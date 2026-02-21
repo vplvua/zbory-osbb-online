@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Vote } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/ui/error-alert';
@@ -10,12 +10,14 @@ import DubidocSigningWidget from '@/components/vote/dubidoc-signing-widget';
 import { readJsonBody, resolveApiErrorMessage, type ApiErrorCodeMap } from '@/lib/api/client-error';
 import { isApiOkDto } from '@/lib/api/error-dto';
 import { toast } from '@/lib/toast/client';
+import { buildAnswersSignature, isSubmitLockedByExistingSigning } from '@/lib/vote/signing-session';
 import type { VoteSheetQuestionDto } from '@/lib/vote/types';
 
 type VoteFormProps = {
   token: string;
   questions: VoteSheetQuestionDto[];
   disabled: boolean;
+  hasActiveSigningSession: boolean;
 };
 
 type VoteSubmitSuccess = {
@@ -45,11 +47,32 @@ const VOTE_ERROR_MAP: ApiErrorCodeMap = {
   VOTE_SUBMIT_FAILED: 'Не вдалося зберегти голос. Спробуйте ще раз.',
 };
 
-export default function VoteForm({ token, questions, disabled }: VoteFormProps) {
+type VoteMap = Record<string, Vote | undefined>;
+
+function buildVoteMap(questions: VoteSheetQuestionDto[]): VoteMap {
+  return Object.fromEntries(
+    questions.map((question) => [question.id, question.vote ?? undefined]),
+  ) as VoteMap;
+}
+
+export default function VoteForm({
+  token,
+  questions,
+  disabled,
+  hasActiveSigningSession: hasActiveSigningSessionInitial,
+}: VoteFormProps) {
   const router = useRouter();
   const submitLockRef = useRef(false);
-  const [votes, setVotes] = useState<Record<string, Vote | undefined>>(() =>
-    Object.fromEntries(questions.map((question) => [question.id, question.vote ?? undefined])),
+  const [votes, setVotes] = useState<VoteMap>(() => buildVoteMap(questions));
+  const [hasActiveSigningSession, setHasActiveSigningSession] = useState(
+    hasActiveSigningSessionInitial,
+  );
+  const [lockedAnswersSignature, setLockedAnswersSignature] = useState<string | null>(() =>
+    hasActiveSigningSessionInitial
+      ? buildAnswersSignature(
+          questions.map((question) => ({ questionId: question.id, vote: question.vote })),
+        )
+      : null,
   );
   const [isConsentChecked, setIsConsentChecked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +80,13 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
   const [error, setError] = useState<string | null>(null);
   const [signingUrl, setSigningUrl] = useState<string | null>(null);
   const [isSigningWidgetOpen, setIsSigningWidgetOpen] = useState(false);
+  const currentAnswersSignature = useMemo(
+    () =>
+      buildAnswersSignature(
+        questions.map((question) => ({ questionId: question.id, vote: votes[question.id] })),
+      ),
+    [questions, votes],
+  );
 
   const isComplete = useMemo(() => {
     if (!isConsentChecked) {
@@ -66,9 +96,48 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
     return questions.every((question) => Boolean(votes[question.id]));
   }, [isConsentChecked, questions, votes]);
 
+  const hasVotesChangedSinceSigningDraft = useMemo(() => {
+    if (!lockedAnswersSignature) {
+      return false;
+    }
+
+    return currentAnswersSignature !== lockedAnswersSignature;
+  }, [currentAnswersSignature, lockedAnswersSignature]);
+
+  const submitLockedByExistingSigning = isSubmitLockedByExistingSigning(
+    lockedAnswersSignature,
+    currentAnswersSignature,
+  );
+
+  const canContinueExistingSigning = hasActiveSigningSession && !hasVotesChangedSinceSigningDraft;
+
+  useEffect(() => {
+    if (!hasVotesChangedSinceSigningDraft) {
+      return;
+    }
+
+    if (signingUrl !== null) {
+      setSigningUrl(null);
+    }
+
+    if (isSigningWidgetOpen) {
+      setIsSigningWidgetOpen(false);
+    }
+  }, [hasVotesChangedSinceSigningDraft, isSigningWidgetOpen, signingUrl]);
+
+  const handleVoteChange = (questionId: string, vote: Vote) => {
+    setVotes((prev) => ({ ...prev, [questionId]: vote }));
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (disabled || isSubmitting || submitLockRef.current || !isComplete) {
+    if (
+      disabled ||
+      isSubmitting ||
+      submitLockRef.current ||
+      !isComplete ||
+      submitLockedByExistingSigning
+    ) {
       return;
     }
 
@@ -104,6 +173,8 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
       const redirectUrl = result.redirectUrl ?? result.signRedirectUrl ?? result.signUrl;
       if (redirectUrl) {
         toast.info('Відповіді збережено. Підпишіть документ нижче.');
+        setHasActiveSigningSession(true);
+        setLockedAnswersSignature(currentAnswersSignature);
         setSigningUrl(redirectUrl);
         setIsSigningWidgetOpen(true);
         return;
@@ -164,6 +235,15 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
     }
   };
 
+  const handleContinueSigning = async () => {
+    if (signingUrl) {
+      setIsSigningWidgetOpen(true);
+      return;
+    }
+
+    await handleRefreshSigningLink();
+  };
+
   if (signingUrl && isSigningWidgetOpen) {
     return (
       <DubidocSigningWidget
@@ -195,7 +275,7 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
                   value="FOR"
                   checked={votes[question.id] === 'FOR'}
                   onChange={() => {
-                    setVotes((prev) => ({ ...prev, [question.id]: 'FOR' }));
+                    handleVoteChange(question.id, 'FOR');
                   }}
                 />
                 За
@@ -209,7 +289,7 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
                   value="AGAINST"
                   checked={votes[question.id] === 'AGAINST'}
                   onChange={() => {
-                    setVotes((prev) => ({ ...prev, [question.id]: 'AGAINST' }));
+                    handleVoteChange(question.id, 'AGAINST');
                   }}
                 />
                 Проти
@@ -232,17 +312,11 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
           Увага! Після підписання зміни неможливі.
         </p>
 
-        {signingUrl ? (
+        {canContinueExistingSigning ? (
           <div className="space-y-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-3">
             <p className="text-sm text-sky-800">Поверніться до підписання документа в Dubidoc.</p>
             <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setIsSigningWidgetOpen(true);
-                }}
-              >
+              <Button type="button" variant="secondary" onClick={handleContinueSigning}>
                 Продовжити підписання
               </Button>
               <Button
@@ -261,10 +335,18 @@ export default function VoteForm({ token, questions, disabled }: VoteFormProps) 
         {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 
         <div className="space-y-2">
-          <Button type="submit" disabled={!isComplete || disabled || isSubmitting}>
+          <Button
+            type="submit"
+            disabled={!isComplete || disabled || isSubmitting || submitLockedByExistingSigning}
+          >
             {isSubmitting ? <LoadingSpinner className="h-4 w-4" /> : null}
             {isSubmitting ? 'Переходимо до підпису...' : 'Підписати електронним підписом'}
           </Button>
+          {submitLockedByExistingSigning ? (
+            <p className="text-muted-foreground text-xs">
+              Щоб сформувати новий листок для підпису, змініть хоча б одну відповідь.
+            </p>
+          ) : null}
           <p className="text-muted-foreground text-xs">
             Після надсилання голосу відкриється підпис або оновиться статус листка.
           </p>

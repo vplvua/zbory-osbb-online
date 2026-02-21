@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { isFormValid } from '@/lib/forms/is-form-valid';
 import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type ProtocolCreateSaveButtonProps = {
@@ -20,7 +21,7 @@ export default function ProtocolCreateSaveButton({ formId }: ProtocolCreateSaveB
     }
 
     const updateState = () => {
-      setCanSubmit(form.checkValidity());
+      setCanSubmit(isFormValid(form));
     };
 
     updateState();

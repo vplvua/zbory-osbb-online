@@ -195,7 +195,9 @@ export default function SheetCreateForm({
               ))}
 
               <div className="space-y-2">
-                <Label htmlFor="protocol-selector-button">Протокол</Label>
+                <Label htmlFor="protocol-selector-button" required>
+                  Протокол
+                </Label>
                 <button
                   id="protocol-selector-button"
                   type="button"
@@ -231,7 +233,9 @@ export default function SheetCreateForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="owner-selector-button">Співвласники</Label>
+                <Label htmlFor="owner-selector-button" required>
+                  Співвласники
+                </Label>
                 <button
                   id="owner-selector-button"
                   type="button"

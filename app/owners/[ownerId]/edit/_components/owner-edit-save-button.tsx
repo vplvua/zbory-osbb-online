@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { isFormValid } from '@/lib/forms/is-form-valid';
 import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type OwnerEditSaveButtonProps = {
@@ -39,7 +40,7 @@ export default function OwnerEditSaveButton({
     const initialSnapshot = serializeForm(form);
 
     const updateState = () => {
-      const isValid = form.checkValidity();
+      const isValid = isFormValid(form);
       const isDirty = serializeForm(form) !== initialSnapshot;
       setCanSubmit(isValid && isDirty);
     };

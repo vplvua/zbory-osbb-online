@@ -568,22 +568,15 @@ function drawMainHeader(context: RenderContext, input: VoteSheetPdfInput) {
 
   drawWrappedParagraph(
     context,
-    'Даний лист опитування заповнюється власноручно співвласником квартири або нежитлового приміщення,',
+    'Даний лист опитування заповнюється власноручно співвласником квартири або нежитлового приміщення, який бере участь у голосуванні.',
     {
       align: 'center',
       font: context.fonts.bold,
       fontSize: FONT_SIZE_SMALL,
       lineHeight: LINE_HEIGHT_SMALL,
-      gapAfter: 1,
+      gapAfter: 14,
     },
   );
-  drawWrappedParagraph(context, 'який бере участь у голосуванні.', {
-    align: 'center',
-    font: context.fonts.bold,
-    fontSize: FONT_SIZE_SMALL,
-    lineHeight: LINE_HEIGHT_SMALL,
-    gapAfter: 14,
-  });
 }
 
 function drawOwnerDetails(context: RenderContext, input: VoteSheetPdfInput) {
