@@ -1,4 +1,4 @@
-import { Vote } from '@prisma/client';
+import { ProtocolType, Vote } from '@prisma/client';
 
 export type VoteSheetPdfQuestionInput = {
   orderNumber: number;
@@ -14,12 +14,14 @@ export type VoteSheetPdfInput = {
   protocol: {
     number: string;
     date: Date;
+    type: ProtocolType;
   };
   osbb: {
     name: string;
     address: string;
   };
   owner: {
+    fullName?: string | null;
     shortName: string;
     apartmentNumber: string;
     totalArea: string;

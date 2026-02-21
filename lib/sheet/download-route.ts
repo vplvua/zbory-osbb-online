@@ -5,20 +5,12 @@ export function parseSheetDownloadKind(value: string): SheetDownloadKind | null 
     return 'original';
   }
 
-  if (value === 'visualization') {
-    return 'visualization';
-  }
-
   if (value === 'signed') {
     return 'signed';
   }
 
   if (value === 'printable') {
     return 'printable';
-  }
-
-  if (value === 'protocol') {
-    return 'protocol';
   }
 
   return null;

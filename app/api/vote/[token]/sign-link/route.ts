@@ -69,6 +69,7 @@ export async function POST(
       status: true,
       expiresAt: true,
       pdfFileUrl: true,
+      dubidocDocumentId: true,
       answers: {
         select: {
           questionId: true,
@@ -124,7 +125,7 @@ export async function POST(
 
   await markSheetDubidocSignPending(sheet.id);
 
-  if (!sheet.pdfFileUrl) {
+  if (!sheet.dubidocDocumentId) {
     const pdfResult = await generateAndStoreSheetPdf(sheet.id);
     if (!pdfResult.ok) {
       console.error('[pdf] failed to generate sheet pdf for signing link', {

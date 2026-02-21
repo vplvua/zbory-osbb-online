@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import RefreshIcon from '@/components/icons/refresh-icon';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { readJsonBody, resolveApiErrorMessage, type ApiErrorCodeMap } from '@/lib/api/client-error';
@@ -85,7 +86,7 @@ export default function VoteStatusRefreshButton({
       onClick={handleRefreshStatus}
       disabled={isPending}
     >
-      {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
+      {isPending ? <LoadingSpinner className="h-4 w-4" /> : <RefreshIcon className="h-4 w-4" />}
       {isPending ? 'Оновлюємо...' : 'Оновити статус документа'}
     </Button>
   );

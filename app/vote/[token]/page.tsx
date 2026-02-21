@@ -90,14 +90,17 @@ function renderStatusBlock(
           </p>
         ) : null}
         {options.dubidocLastError ? <ErrorAlert>{options.dubidocLastError}</ErrorAlert> : null}
-        {options.hasDubidocDocument ? (
-          <VoteStatusRefreshButton token={token} className="h-8 px-3 text-xs font-semibold" />
-        ) : null}
-        <VoteDownloadActions
-          baseDownloadPath={baseDownloadPath}
-          hasPdfFile={options.hasPdfFile}
-          isSigned={false}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {options.hasDubidocDocument ? (
+            <VoteStatusRefreshButton token={token} className="h-8 px-3 text-xs font-semibold" />
+          ) : null}
+          <VoteDownloadActions
+            baseDownloadPath={baseDownloadPath}
+            hasPdfFile={options.hasPdfFile}
+            hasDubidocDocument={options.hasDubidocDocument}
+            isSigned={false}
+          />
+        </div>
       </section>
     );
   }
@@ -138,6 +141,7 @@ function renderStatusBlock(
         <VoteDownloadActions
           baseDownloadPath={baseDownloadPath}
           hasPdfFile={options.hasPdfFile}
+          hasDubidocDocument={options.hasDubidocDocument}
           isSigned
         />
       </section>

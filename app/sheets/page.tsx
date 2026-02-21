@@ -375,6 +375,7 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                 const votePath = `/vote/${sheet.publicToken}`;
                 const downloadBasePath = `/api/sheets/${sheet.id}/downloads`;
                 const hasPdf = Boolean(sheet.pdfFileUrl);
+                const hasDubidocDocument = Boolean(sheet.dubidocDocumentId);
                 const isSigned = sheet.status === SheetStatus.SIGNED;
                 const protocolNumberLabel = sheet.protocol.number.trim().startsWith('№')
                   ? sheet.protocol.number.trim()
@@ -492,6 +493,7 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                           <SheetDownloadActions
                             downloadBasePath={downloadBasePath}
                             hasPdf={hasPdf}
+                            hasDubidocDocument={hasDubidocDocument}
                             isSigned={isSigned}
                           />
                         </div>

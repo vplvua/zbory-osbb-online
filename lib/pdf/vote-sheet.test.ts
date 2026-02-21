@@ -12,6 +12,7 @@ describe('vote sheet pdf generator', () => {
       protocol: {
         number: '12',
         date: new Date('2026-02-01T10:00:00.000Z'),
+        type: 'GENERAL',
       },
       osbb: {
         name: 'Test OSBB',
@@ -47,6 +48,10 @@ describe('vote sheet pdf generator', () => {
 
     assert.equal(Buffer.from(result.pdfBytes).subarray(0, 5).toString('utf8'), '%PDF-');
     assert.ok(result.pdfBytes.length > 1024);
+    const rawPdf = Buffer.from(result.pdfBytes).toString('latin1');
+    assert.ok(rawPdf.includes('/Identity-H'), 'Expected Unicode font encoding in generated PDF');
+    assert.ok(!rawPdf.includes('/WinAnsiEncoding'), 'Expected no WinAnsi fallback encoding');
+    assert.ok(!rawPdf.includes('/BaseFont /Helvetica'), 'Expected no Helvetica fallback font');
     assert.ok(
       result.generationMs < 3000,
       `Expected generation < 3000ms, got ${result.generationMs}ms`,
