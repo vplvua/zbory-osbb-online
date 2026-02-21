@@ -1,9 +1,9 @@
-import { promises as fs } from 'node:fs';
 import { SheetStatus } from '@prisma/client';
 import { getDocumentSigningService, isDubidocConfigured } from '@/lib/dubidoc/adapter';
 import { prisma } from '@/lib/db/prisma';
 import { classifyError } from '@/lib/errors';
 import type { DocumentDownloadResult, DocumentDownloadVariant } from '@/lib/dubidoc/types';
+import { loadSheetPdfBytesWithFallback } from '@/lib/sheet/pdf-processing';
 
 export type SheetDownloadKind = 'original' | 'signed' | 'printable';
 
@@ -46,11 +46,10 @@ function makeMockP7s(sheetId: string, sourcePdfSize: number): Uint8Array {
 }
 
 async function readPdfBytes(sheet: SheetDownloadRecord): Promise<Uint8Array> {
-  if (!sheet.pdfFileUrl) {
-    throw new Error('PDF_NOT_AVAILABLE');
-  }
-
-  return fs.readFile(sheet.pdfFileUrl);
+  return loadSheetPdfBytesWithFallback({
+    sheetId: sheet.id,
+    pdfFileUrl: sheet.pdfFileUrl,
+  });
 }
 
 function getBaseFilename(sheetId: string): string {

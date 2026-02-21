@@ -1,7 +1,7 @@
-import { promises as fs } from 'node:fs';
 import { prisma } from '@/lib/db/prisma';
 import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
 import { processDubidocWebhookEvent } from '@/lib/dubidoc/webhook';
+import { loadSheetPdfBytesWithFallback } from '@/lib/sheet/pdf-processing';
 import type { DocumentStatus } from '@/lib/dubidoc/types';
 import type { DocumentParticipantInput } from '@/lib/dubidoc/types';
 
@@ -170,7 +170,7 @@ function buildSheetDocumentTitle(context: SheetSigningContext): string {
 
 export async function ensureSheetSigningRedirectUrl(sheetId: string): Promise<string | null> {
   const context = await getSheetSigningContext(sheetId);
-  if (!context || !context.pdfFileUrl) {
+  if (!context) {
     return null;
   }
 
@@ -178,7 +178,10 @@ export async function ensureSheetSigningRedirectUrl(sheetId: string): Promise<st
   let documentId = context.dubidocDocumentId;
 
   if (!documentId) {
-    const fileBuffer = await fs.readFile(context.pdfFileUrl);
+    const fileBuffer = await loadSheetPdfBytesWithFallback({
+      sheetId: context.id,
+      pdfFileUrl: context.pdfFileUrl,
+    });
     const participants = buildSheetSigningParticipants(context);
     const title = buildSheetDocumentTitle(context);
 
