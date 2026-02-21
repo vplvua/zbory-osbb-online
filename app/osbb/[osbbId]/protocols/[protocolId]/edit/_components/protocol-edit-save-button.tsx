@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { isFormValid } from '@/lib/forms/is-form-valid';
 import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type ProtocolEditSaveButtonProps = {
@@ -20,7 +21,7 @@ function buildFormSnapshot(form: HTMLFormElement): string {
 
 export default function ProtocolEditSaveButton({ formId }: ProtocolEditSaveButtonProps) {
   const initialSnapshotRef = useRef<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
+  const [canSubmit, setCanSubmit] = useState(false);
   const isPending = useExternalFormPending(formId);
 
   useEffect(() => {
@@ -29,33 +30,35 @@ export default function ProtocolEditSaveButton({ formId }: ProtocolEditSaveButto
       return;
     }
 
-    const setDirtyState = () => {
+    const updateSubmitState = () => {
       const current = buildFormSnapshot(form);
       const initial = initialSnapshotRef.current;
-      setIsDirty(initial !== null && current !== initial);
+      const isDirty = initial !== null && current !== initial;
+      setCanSubmit(isDirty && isFormValid(form));
     };
     const resetDirtyState = () => {
-      setIsDirty(false);
+      setCanSubmit(false);
     };
 
     initialSnapshotRef.current = buildFormSnapshot(form);
 
-    form.addEventListener('input', setDirtyState);
-    form.addEventListener('change', setDirtyState);
+    updateSubmitState();
+    form.addEventListener('input', updateSubmitState);
+    form.addEventListener('change', updateSubmitState);
     form.addEventListener('reset', resetDirtyState);
-    const observer = new MutationObserver(setDirtyState);
+    const observer = new MutationObserver(updateSubmitState);
     observer.observe(form, { childList: true, subtree: true });
 
     return () => {
-      form.removeEventListener('input', setDirtyState);
-      form.removeEventListener('change', setDirtyState);
+      form.removeEventListener('input', updateSubmitState);
+      form.removeEventListener('change', updateSubmitState);
       form.removeEventListener('reset', resetDirtyState);
       observer.disconnect();
     };
   }, [formId]);
 
   return (
-    <Button type="submit" form={formId} disabled={!isDirty || isPending}>
+    <Button type="submit" form={formId} disabled={!canSubmit || isPending}>
       {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
       {isPending ? 'Збереження...' : 'Зберегти'}
     </Button>
