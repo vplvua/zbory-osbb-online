@@ -33,24 +33,8 @@ const COLOR_COLONTITULE = rgb(0.42, 0.42, 0.42);
 const HEADER_BLOCK_X = PAGE_WIDTH * (2 / 3);
 const HEADER_BLOCK_WIDTH = PAGE_WIDTH - HEADER_BLOCK_X - 24;
 
-const BUNDLED_FONT_PATH = path.join(process.cwd(), 'lib/pdf/fonts/inter-regular-cyrillic.woff');
-
-const FONT_CANDIDATE_PATHS = [
-  process.env.PDF_FONT_PATH,
-  '/System/Library/Fonts/Supplemental/Arial.ttf',
-  '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
-  BUNDLED_FONT_PATH,
-  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-  '/usr/share/fonts/dejavu/DejaVuSans.ttf',
-].filter((value): value is string => Boolean(value));
-
-const FONT_BOLD_CANDIDATE_PATHS = [
-  process.env.PDF_FONT_BOLD_PATH,
-  '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
-  '/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf',
-  process.env.PDF_FONT_PATH,
-  BUNDLED_FONT_PATH,
-].filter((value): value is string => Boolean(value));
+const BUNDLED_REGULAR_FONT_PATH = path.join(process.cwd(), 'lib/pdf/fonts/DejaVuSans.ttf');
+const BUNDLED_BOLD_FONT_PATH = path.join(process.cwd(), 'lib/pdf/fonts/DejaVuSans-Bold.ttf');
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA', {
   day: '2-digit',
@@ -148,31 +132,26 @@ function formatShareFraction(numerator: number, denominator: number): string {
   return `${numerator}/${denominator}`;
 }
 
-async function loadFirstAvailableFont(candidatePaths: string[]): Promise<Uint8Array | null> {
-  for (const fontPath of candidatePaths) {
-    try {
-      const fontBytes = await fs.readFile(fontPath);
-      return new Uint8Array(fontBytes);
-    } catch {
-      // Try next candidate.
-    }
+async function loadBundledFont(fontPath: string, variant: 'regular' | 'bold'): Promise<Uint8Array> {
+  try {
+    const fontBytes = await fs.readFile(fontPath);
+    return new Uint8Array(fontBytes);
+  } catch (cause) {
+    throw new PermanentError(`[PDF] Bundled ${variant} font file not found: ${fontPath}.`, {
+      code: 'PDF_FONT_NOT_FOUND',
+      cause,
+    });
   }
-
-  return null;
 }
 
 async function loadFonts(pdfDoc: PDFDocument): Promise<EmbeddedFonts> {
-  const regularFontBytes = await loadFirstAvailableFont(FONT_CANDIDATE_PATHS);
-  if (!regularFontBytes) {
-    throw new PermanentError('[PDF] Unicode font file not found.', {
-      code: 'PDF_FONT_NOT_FOUND',
-    });
-  }
-
-  const boldFontBytes = await loadFirstAvailableFont(FONT_BOLD_CANDIDATE_PATHS);
+  const [regularFontBytes, boldFontBytes] = await Promise.all([
+    loadBundledFont(BUNDLED_REGULAR_FONT_PATH, 'regular'),
+    loadBundledFont(BUNDLED_BOLD_FONT_PATH, 'bold'),
+  ]);
 
   const regular = await pdfDoc.embedFont(regularFontBytes, { subset: true });
-  const bold = boldFontBytes ? await pdfDoc.embedFont(boldFontBytes, { subset: true }) : regular;
+  const bold = await pdfDoc.embedFont(boldFontBytes, { subset: true });
 
   return { regular, bold };
 }
@@ -283,10 +262,53 @@ function drawLabeledField(
   const gapAfter = options?.gapAfter ?? 2;
   const lineHeight = LINE_HEIGHT_BODY;
   const fontSize = FONT_SIZE_BODY;
-  const normalizedLabel = label.endsWith(' ') ? label : `${label} `;
+  const normalizedLabel = normalizeText(label);
+  const normalizedLabelWithSpace = `${normalizedLabel} `;
   const normalizedValue = `${normalizeText(value) || '—'}${suffix}`;
   const contentWidth = PAGE_WIDTH - MARGIN_X * 2;
-  const labelWidth = context.fonts.regular.widthOfTextAtSize(normalizedLabel, fontSize);
+  const labelLines = splitByLineWidth(
+    normalizedLabel,
+    context.fonts.regular,
+    fontSize,
+    contentWidth,
+  );
+
+  if (labelLines.length > 1) {
+    const valueLines = splitByLineWidth(
+      normalizedValue,
+      context.fonts.bold,
+      fontSize,
+      contentWidth,
+    );
+    ensureSpace(context, (labelLines.length + valueLines.length) * lineHeight + gapAfter);
+
+    for (const line of labelLines) {
+      context.page.drawText(line, {
+        x: MARGIN_X,
+        y: context.cursorY,
+        size: fontSize,
+        font: context.fonts.regular,
+        color: COLOR_BLACK,
+      });
+      context.cursorY -= lineHeight;
+    }
+
+    for (const line of valueLines) {
+      context.page.drawText(line, {
+        x: MARGIN_X,
+        y: context.cursorY,
+        size: fontSize,
+        font: context.fonts.bold,
+        color: COLOR_BLACK,
+      });
+      context.cursorY -= lineHeight;
+    }
+
+    context.cursorY -= gapAfter;
+    return;
+  }
+
+  const labelWidth = context.fonts.regular.widthOfTextAtSize(normalizedLabelWithSpace, fontSize);
   const firstLineValueWidth = contentWidth - labelWidth;
 
   if (firstLineValueWidth < 90) {
@@ -298,7 +320,7 @@ function drawLabeledField(
     );
     ensureSpace(context, lineHeight + valueLines.length * lineHeight + gapAfter);
 
-    context.page.drawText(normalizedLabel, {
+    context.page.drawText(normalizedLabelWithSpace, {
       x: MARGIN_X,
       y: context.cursorY,
       size: fontSize,
@@ -332,7 +354,7 @@ function drawLabeledField(
 
   ensureSpace(context, valueLines.length * lineHeight + gapAfter);
 
-  context.page.drawText(normalizedLabel, {
+  context.page.drawText(normalizedLabelWithSpace, {
     x: MARGIN_X,
     y: context.cursorY,
     size: fontSize,
@@ -574,11 +596,9 @@ function drawOwnerDetails(context: RenderContext, input: VoteSheetPdfInput) {
   ]
     .filter(Boolean)
     .join(', ');
-  const ownershipDocument = normalizeOrDash(input.owner.ownershipDocument);
-
-  const representative = normalizeText(
-    [input.owner.representativeName, input.owner.representativeDocument].filter(Boolean).join(', '),
-  );
+  const ownershipDocumentRaw = normalizeText(input.owner.ownershipDocument);
+  const ownershipDocument = ownershipDocumentRaw || '—';
+  const representativeDocumentRaw = normalizeText(input.owner.representativeDocument ?? '');
 
   drawLabeledField(context, '1. Дата опитування:', formatDate(input.surveyDate));
   drawLabeledField(context, "2. Прізвище ім'я по-батькові співвласника:", ownerName);
@@ -598,12 +618,15 @@ function drawOwnerDetails(context: RenderContext, input: VoteSheetPdfInput) {
     '6. Частка власності:',
     `${formatShareFraction(input.owner.ownershipNumerator, input.owner.ownershipDenominator)} (${formatDecimal(input.owner.ownedArea, 2)} м²)`,
   );
-  drawLabeledField(
-    context,
-    '7. У разі необхідності - документ, що надає повноваження на голосуванні від імені співвласника (для представника):',
-    representative || '____________________________________',
-    { gapAfter: 12 },
-  );
+
+  if (representativeDocumentRaw) {
+    drawLabeledField(
+      context,
+      '7. Документ, що надає повноваження на голосуванні від імені співвласника (для представника):',
+      representativeDocumentRaw,
+      { gapAfter: 12 },
+    );
+  }
 }
 
 function getTableGeometry(): TableGeometry {

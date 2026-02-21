@@ -29,6 +29,7 @@ async function readVoteSheetByToken(token: string) {
           firstName: true,
           middleName: true,
           apartmentNumber: true,
+          totalArea: true,
           ownedArea: true,
           ownershipNumerator: true,
           ownershipDenominator: true,
@@ -148,6 +149,7 @@ export async function getVoteSheetByToken(
     owner: {
       shortName: formatOwnerShortName(sheet.owner),
       apartmentNumber: sheet.owner.apartmentNumber,
+      totalArea: sheet.owner.totalArea.toString(),
       ownedArea: sheet.owner.ownedArea.toString(),
       ownershipNumerator: sheet.owner.ownershipNumerator,
       ownershipDenominator: sheet.owner.ownershipDenominator,

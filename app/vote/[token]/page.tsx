@@ -12,6 +12,19 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('uk-UA', {
   timeStyle: 'short',
 });
 
+function formatArea(value: string) {
+  const numeric = Number.parseFloat(value);
+  if (!Number.isFinite(numeric)) {
+    return value;
+  }
+
+  if (Number.isInteger(numeric)) {
+    return String(numeric);
+  }
+
+  return numeric.toLocaleString('uk-UA', { maximumFractionDigits: 2 });
+}
+
 function VoteChoiceBadge({ vote }: { vote: Vote | null }) {
   if (vote === null) {
     return (
@@ -173,6 +186,14 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
   const protocolDate = DATE_FORMATTER.format(new Date(sheet.protocolDate));
   const surveyDate = DATE_FORMATTER.format(new Date(sheet.surveyDate));
   const expiresAtDate = DATE_FORMATTER.format(new Date(sheet.expiresAt));
+  const totalAreaLabel = formatArea(sheet.owner.totalArea);
+  const ownedAreaNumeric = Number.parseFloat(sheet.owner.ownedArea);
+  const ownedAreaRounded = Number.isFinite(ownedAreaNumeric)
+    ? ownedAreaNumeric.toLocaleString('uk-UA', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : sheet.owner.ownedArea;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
@@ -188,9 +209,10 @@ export default async function VotePage({ params }: { params: Promise<{ token: st
         <div className="text-foreground mt-3 space-y-1 text-sm">
           <p>Співвласник: {sheet.owner.shortName}</p>
           <p>Квартира: {sheet.owner.apartmentNumber}</p>
+          <p>Загальна площа: {totalAreaLabel} м2</p>
           <p>
-            Площа: {sheet.owner.ownedArea} м² (частка: {sheet.owner.ownershipNumerator}/
-            {sheet.owner.ownershipDenominator})
+            Володіє часткою: {sheet.owner.ownershipNumerator}/{sheet.owner.ownershipDenominator} (
+            {ownedAreaRounded} м2)
           </p>
           <p>Дата опитування: {surveyDate}</p>
           <p>Підписати до: {expiresAtDate}</p>
