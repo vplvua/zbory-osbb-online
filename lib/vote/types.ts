@@ -3,6 +3,7 @@ import { SheetStatus, Vote } from '@prisma/client';
 export type VoteSheetOwnerDto = {
   shortName: string;
   apartmentNumber: string;
+  totalArea: string;
   ownedArea: string;
   ownershipNumerator: number;
   ownershipDenominator: number;
