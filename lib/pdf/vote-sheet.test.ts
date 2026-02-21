@@ -47,6 +47,10 @@ describe('vote sheet pdf generator', () => {
 
     assert.equal(Buffer.from(result.pdfBytes).subarray(0, 5).toString('utf8'), '%PDF-');
     assert.ok(result.pdfBytes.length > 1024);
+    const rawPdf = Buffer.from(result.pdfBytes).toString('latin1');
+    assert.ok(rawPdf.includes('/Identity-H'), 'Expected Unicode font encoding in generated PDF');
+    assert.ok(!rawPdf.includes('/WinAnsiEncoding'), 'Expected no WinAnsi fallback encoding');
+    assert.ok(!rawPdf.includes('/BaseFont /Helvetica'), 'Expected no Helvetica fallback font');
     assert.ok(
       result.generationMs < 3000,
       `Expected generation < 3000ms, got ${result.generationMs}ms`,

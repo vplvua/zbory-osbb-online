@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import fontkit from '@pdf-lib/fontkit';
-import { PDFDocument, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
+import { PDFDocument, type PDFFont, type PDFPage } from 'pdf-lib';
 import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
 import type { VoteSheetPdfInput, VoteSheetPdfResult } from '@/lib/pdf/types';
 import { retryPresets, withRetry } from '@/lib/retry/withRetry';
@@ -16,6 +16,7 @@ const TEXT_SIZE = 11;
 const TITLE_SIZE = 14;
 const LINE_HEIGHT = 15;
 const PARAGRAPH_GAP = 8;
+const BUNDLED_FONT_PATH = path.join(process.cwd(), 'lib/pdf/fonts/inter-regular-cyrillic.woff');
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA', {
   day: '2-digit',
@@ -37,6 +38,7 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('uk-UA', {
 
 const FONT_CANDIDATE_PATHS = [
   process.env.PDF_FONT_PATH,
+  BUNDLED_FONT_PATH,
   '/System/Library/Fonts/Supplemental/Arial.ttf',
   '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
   '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
@@ -47,7 +49,6 @@ type DrawingContext = {
   pdfDoc: PDFDocument;
   page: PDFPage;
   font: PDFFont;
-  supportsUnicode: boolean;
   createdAtLabel: string;
   cursorY: number;
 };
@@ -58,14 +59,6 @@ function formatDate(value: Date): string {
 
 function formatDateTime(value: Date): string {
   return DATE_TIME_FORMATTER.format(value);
-}
-
-function winAnsiSafe(text: string): string {
-  return text.replace(/[^\x20-\x7E]/g, '?');
-}
-
-function normalizeText(text: string, supportsUnicode: boolean): string {
-  return supportsUnicode ? text : winAnsiSafe(text);
 }
 
 async function loadFirstAvailableFont(): Promise<Uint8Array | null> {
@@ -130,7 +123,7 @@ function splitByLineWidth(
 }
 
 function drawPageHeader(context: DrawingContext) {
-  const label = normalizeText(`Створено: ${context.createdAtLabel}`, context.supportsUnicode);
+  const label = `Створено: ${context.createdAtLabel}`;
   const headerSize = 9;
   const width = context.font.widthOfTextAtSize(label, headerSize);
 
@@ -168,9 +161,8 @@ function drawWrappedParagraph(
   const indent = options?.indent ?? 0;
   const gapAfter = options?.gapAfter ?? PARAGRAPH_GAP;
   const lineHeight = options?.lineHeight ?? LINE_HEIGHT;
-  const safeText = normalizeText(text, context.supportsUnicode);
   const maxWidth = A4_WIDTH - PAGE_MARGIN_X * 2 - indent;
-  const lines = splitByLineWidth(safeText, context.font, fontSize, maxWidth);
+  const lines = splitByLineWidth(text, context.font, fontSize, maxWidth);
 
   for (const line of lines) {
     ensureVerticalSpace(context, lineHeight);
@@ -214,16 +206,18 @@ export async function generateVoteSheetPdf(input: VoteSheetPdfInput): Promise<Vo
         pdfDoc.registerFontkit(fontkit);
 
         const customFontBytes = await loadFirstAvailableFont();
-        const font = customFontBytes
-          ? await pdfDoc.embedFont(customFontBytes, { subset: true })
-          : await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const supportsUnicode = customFontBytes !== null;
+        if (!customFontBytes) {
+          throw new PermanentError('[PDF] Unicode font file not found.', {
+            code: 'PDF_FONT_NOT_FOUND',
+          });
+        }
+
+        const font = await pdfDoc.embedFont(customFontBytes, { subset: true });
 
         const context: DrawingContext = {
           pdfDoc,
           page: pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]),
           font,
-          supportsUnicode,
           createdAtLabel: formatDateTime(input.generatedAt),
           cursorY: PAGE_TOP_Y,
         };
