@@ -138,6 +138,34 @@ WHERE status = 'PENDING' AND "runAt" <= NOW();
 
 If `pending_due` does not decrease after retries, inspect `lastError` values and fix the underlying integration/runtime issue before retrying again.
 
+## Structured Triage Logs
+
+Critical integration operations emit structured logs with `[ops]` prefix.
+
+Primary components:
+
+- `sms` (TurboSMS provider calls)
+- `dubidoc` (Dubidoc HTTP calls)
+- `queue` and `queue-cron` (deferred queue processing and cron trigger)
+
+Common triage fields:
+
+- `event`, `component`, `outcome`
+- `sheetId`, `documentId` (when available)
+- `attempt`, `maxAttempts`, `retryInMs`
+- `errorCode`, `errorType`, `errorName`, `errorMessage`
+
+Retry outcomes:
+
+- `outcome=retry_scheduled`
+- `outcome=retry_success`
+- `outcome=final_fail`
+
+Sensitive-data policy:
+
+- Public vote `token` and full phone numbers are not logged in production error paths.
+- SMS OTP values are logged only by dev mock adapter for local testing.
+
 ## Post-Deploy Verification
 
 Check deployment logs for:

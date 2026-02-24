@@ -4,6 +4,7 @@ import { apiErrorResponse } from '@/lib/api/error-response';
 import { prisma } from '@/lib/db/prisma';
 import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
 import { generateAndStoreSheetPdf, PDF_TARGET_MS } from '@/lib/sheet/pdf-processing';
+import { getOpsErrorFields, logOpsError } from '@/lib/logging/ops';
 import { isValidPublicToken } from '@/lib/tokens';
 import { hasAnswersChanged } from '@/lib/vote/signing-session';
 import { getVoteSheetByToken } from '@/lib/vote/sheet';
@@ -440,7 +441,13 @@ export async function POST(
         'Сервіс підписання тимчасово недоступний. Спробуйте ще раз.',
       );
     }
-    console.error('[vote:submit] failed', { token, error });
+    logOpsError({
+      component: 'vote',
+      event: 'submit_failed',
+      outcome: 'final_fail',
+      sheetId: signStateSheetId,
+      ...getOpsErrorFields(error),
+    });
     return apiErrorResponse({
       status: 500,
       code: 'VOTE_SUBMIT_FAILED',

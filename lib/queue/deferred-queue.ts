@@ -1,6 +1,7 @@
 import { type DeferredQueue, type Prisma } from '@prisma/client';
 import { getDocumentSigningService } from '@/lib/dubidoc/adapter';
 import { prisma } from '@/lib/db/prisma';
+import { getOpsErrorFields, logOpsError, logOpsInfo, logOpsWarn } from '@/lib/logging/ops';
 import { getBackoffDelayMs, retryPresets, type RetryBackoffOptions } from '@/lib/retry/withRetry';
 
 export const DEFERRED_QUEUE_STATUS = {
@@ -65,6 +66,37 @@ function getDubidocDocumentIdFromPayload(payload: Prisma.JsonValue): string | nu
 
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+}
+
+function getStringPayloadField(
+  payload: Prisma.JsonValue,
+  field: 'sheetId' | 'documentId',
+): string | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return null;
+  }
+
+  const value = (payload as Record<string, unknown>)[field];
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function getQueueLogContext(job: DeferredQueue): {
+  queueJobId: string;
+  jobType: string;
+  sheetId: string | null;
+  documentId: string | null;
+} {
+  return {
+    queueJobId: job.id,
+    jobType: job.type,
+    sheetId: getStringPayloadField(job.payload, 'sheetId'),
+    documentId: getStringPayloadField(job.payload, 'documentId'),
+  };
 }
 
 const DEFAULT_DEFINITIONS: DeferredQueueDefinitions = {
@@ -178,6 +210,17 @@ export async function processDueDeferredQueueJobs(
         },
       });
 
+      logOpsError({
+        component: 'queue',
+        event: 'job_failed',
+        outcome: 'final_fail',
+        attempt: attemptNumber,
+        maxAttempts: 1,
+        errorCode: 'QUEUE_HANDLER_NOT_FOUND',
+        errorMessage: `No queue handler for job type: ${job.type}`,
+        ...getQueueLogContext(job),
+      });
+
       result.processed += 1;
       result.failed += 1;
       continue;
@@ -195,6 +238,17 @@ export async function processDueDeferredQueueJobs(
         },
       });
 
+      if (attemptNumber > 1) {
+        logOpsInfo({
+          component: 'queue',
+          event: 'job_retry_success',
+          outcome: 'retry_success',
+          attempt: attemptNumber,
+          maxAttempts: normalizeAttempts(definition.maxAttempts),
+          ...getQueueLogContext(job),
+        });
+      }
+
       result.processed += 1;
       result.succeeded += 1;
     } catch (error) {
@@ -211,6 +265,29 @@ export async function processDueDeferredQueueJobs(
           runAt: shouldRetry ? new Date(now.getTime() + delayMs) : job.runAt,
         },
       });
+
+      if (shouldRetry) {
+        logOpsWarn({
+          component: 'queue',
+          event: 'job_retry_scheduled',
+          outcome: 'retry_scheduled',
+          attempt: attemptNumber,
+          maxAttempts,
+          retryInMs: delayMs,
+          ...getQueueLogContext(job),
+          ...getOpsErrorFields(error),
+        });
+      } else {
+        logOpsError({
+          component: 'queue',
+          event: 'job_failed',
+          outcome: 'final_fail',
+          attempt: attemptNumber,
+          maxAttempts,
+          ...getQueueLogContext(job),
+          ...getOpsErrorFields(error),
+        });
+      }
 
       result.processed += 1;
       if (shouldRetry) {

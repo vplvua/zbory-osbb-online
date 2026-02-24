@@ -6,6 +6,7 @@ import { getAuthSecret } from '@/lib/auth/secret';
 import { getSmsAdapter } from '@/lib/sms/adapter';
 import { isValidPhone, normalizePhone } from '@/lib/auth/validation';
 import { checkOtpRateLimit, OTP_RATE_LIMIT } from '@/lib/auth/rate-limit';
+import { getOpsErrorFields, logOpsError } from '@/lib/logging/ops';
 import { SmsRateLimitAction } from '@prisma/client';
 
 export async function POST(request: Request) {
@@ -77,7 +78,13 @@ export async function POST(request: Request) {
         });
       }
     } catch (error) {
-      console.error('[auth:request-code] sms send failed', { phone, error });
+      logOpsError({
+        component: 'auth',
+        event: 'sms_send_failed',
+        outcome: 'final_fail',
+        otpId: otp.id,
+        ...getOpsErrorFields(error),
+      });
       await prisma.smsOtp.delete({ where: { id: otp.id } });
       return apiErrorResponse({
         status: 500,
@@ -88,7 +95,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[auth:request-code] failed', { error });
+    logOpsError({
+      component: 'auth',
+      event: 'request_code_failed',
+      outcome: 'final_fail',
+      ...getOpsErrorFields(error),
+    });
     return apiErrorResponse({
       status: 500,
       code: 'AUTH_REQUEST_FAILED',

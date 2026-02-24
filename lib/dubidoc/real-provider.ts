@@ -10,6 +10,7 @@ import type {
   DocumentStatusResult,
 } from '@/lib/dubidoc/types';
 import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
+import { getOpsErrorFields, logOpsError, logOpsInfo, logOpsWarn } from '@/lib/logging/ops';
 import { retryPresets, withRetry } from '@/lib/retry/withRetry';
 
 const DUBIDOC_BASE_URL = 'https://api.dubidoc.com.ua';
@@ -215,6 +216,19 @@ function sanitizeHeaderValue(value: string | null): string | null {
   return normalized.length ? normalized : null;
 }
 
+function extractDocumentIdFromPath(path: string): string | null {
+  const match = /\/documents\/([^/?#]+)/i.exec(path);
+  if (!match?.[1]) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
 function parseFilenameToken(token: string): string | null {
   const trimmed = token.trim().replace(/^["']|["']$/g, '');
   if (!trimmed) {
@@ -335,64 +349,105 @@ export class DubidocApiSigningService implements DocumentSigningService {
   }
 
   private async sendRequest(options: RequestOptions): Promise<Response> {
-    return withRetry(
-      async ({ signal }) => {
-        try {
-          const response = await fetch(`${this.baseUrl}${options.path}`, {
-            method: options.method,
-            headers: this.buildHeaders(Boolean(options.body)),
-            body: options.body ? JSON.stringify(options.body) : undefined,
-            signal,
-          });
+    const documentId = extractDocumentIdFromPath(options.path);
+    let lastAttempt = 1;
 
-          if (!response.ok) {
-            let errorMessage = `[Dubidoc] ${options.method} ${options.path} failed with status ${response.status}.`;
-            const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
-            const rawBody = await response.text();
+    try {
+      const response = await withRetry(
+        async ({ signal, attempt }) => {
+          lastAttempt = attempt;
 
-            if (contentType.includes('application/json')) {
-              try {
-                const parsedError = dubidocErrorSchema.safeParse(JSON.parse(rawBody));
-                if (parsedError.success) {
-                  const detail =
-                    parsedError.data.detail ?? parsedError.data.message ?? parsedError.data.title;
-                  if (detail) {
-                    errorMessage = `${errorMessage} ${detail}`;
+          try {
+            const response = await fetch(`${this.baseUrl}${options.path}`, {
+              method: options.method,
+              headers: this.buildHeaders(Boolean(options.body)),
+              body: options.body ? JSON.stringify(options.body) : undefined,
+              signal,
+            });
+
+            if (!response.ok) {
+              let errorMessage = `[Dubidoc] ${options.method} ${options.path} failed with status ${response.status}.`;
+              const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+              const rawBody = await response.text();
+
+              if (contentType.includes('application/json')) {
+                try {
+                  const parsedError = dubidocErrorSchema.safeParse(JSON.parse(rawBody));
+                  if (parsedError.success) {
+                    const detail =
+                      parsedError.data.detail ?? parsedError.data.message ?? parsedError.data.title;
+                    if (detail) {
+                      errorMessage = `${errorMessage} ${detail}`;
+                    }
                   }
+                } catch {
+                  // Ignore parse failures and fallback to plain body handling below.
                 }
-              } catch {
-                // Ignore parse failures and fallback to plain body handling below.
               }
+
+              if (errorMessage.endsWith(`${response.status}.`)) {
+                const detail = rawBody.trim();
+                if (detail) {
+                  errorMessage = `${errorMessage} ${detail.slice(0, 500)}`;
+                }
+              }
+
+              throw classifyDubidocHttpStatus(response.status, errorMessage);
             }
 
-            if (errorMessage.endsWith(`${response.status}.`)) {
-              const detail = rawBody.trim();
-              if (detail) {
-                errorMessage = `${errorMessage} ${detail.slice(0, 500)}`;
-              }
-            }
-
-            throw classifyDubidocHttpStatus(response.status, errorMessage);
+            return response;
+          } catch (error) {
+            throw classifyDubidocRequestError(error);
           }
-
-          return response;
-        } catch (error) {
-          throw classifyDubidocRequestError(error);
-        }
-      },
-      {
-        ...retryPresets.dubidoc,
-        shouldRetry: (error) => error instanceof TemporaryError,
-        onRetry: ({ attempt, nextDelayMs }) => {
-          console.warn('[dubidoc:http] request retry scheduled', {
-            method: options.method,
-            path: options.path,
-            attempt,
-            retryInMs: nextDelayMs,
-          });
         },
-      },
-    );
+        {
+          ...retryPresets.dubidoc,
+          shouldRetry: (error) => error instanceof TemporaryError,
+          onRetry: ({ attempt, maxAttempts, nextDelayMs, error }) => {
+            logOpsWarn({
+              component: 'dubidoc',
+              event: 'provider_request_retry_scheduled',
+              outcome: 'retry_scheduled',
+              method: options.method,
+              path: options.path,
+              documentId,
+              attempt,
+              maxAttempts,
+              retryInMs: nextDelayMs,
+              ...getOpsErrorFields(error),
+            });
+          },
+        },
+      );
+
+      if (lastAttempt > 1) {
+        logOpsInfo({
+          component: 'dubidoc',
+          event: 'provider_request_retry_success',
+          outcome: 'retry_success',
+          method: options.method,
+          path: options.path,
+          documentId,
+          attempt: lastAttempt,
+          maxAttempts: retryPresets.dubidoc.maxAttempts,
+        });
+      }
+
+      return response;
+    } catch (error) {
+      logOpsError({
+        component: 'dubidoc',
+        event: 'provider_request_failed',
+        outcome: 'final_fail',
+        method: options.method,
+        path: options.path,
+        documentId,
+        attempt: lastAttempt,
+        maxAttempts: retryPresets.dubidoc.maxAttempts,
+        ...getOpsErrorFields(error),
+      });
+      throw error;
+    }
   }
 
   private async requestJson<T>(options: RequestOptions): Promise<T> {
