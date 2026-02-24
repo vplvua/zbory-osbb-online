@@ -42,8 +42,10 @@ const VOTE_ERROR_MAP: ApiErrorCodeMap = {
   VOTE_REFRESH_FAILED: 'Голос збережено, але не вдалося оновити дані листка.',
   VOTE_SIGN_PREPARE_FAILED: 'Не вдалося підготувати документ для підписання. Спробуйте ще раз.',
   VOTE_SIGNING_UNAVAILABLE: 'Сервіс підписання тимчасово недоступний. Спробуйте ще раз.',
-  VOTE_SIGNING_NOT_CONFIGURED:
-    'Підписання тимчасово недоступне через неповні налаштування ОСББ. Зверніться до відповідальної особи.',
+  VOTE_SIGNING_NOT_CONFIGURED: (error) =>
+    error.message.trim().length > 0
+      ? error.message
+      : 'Підписання тимчасово недоступне через неповні налаштування. Зверніться до відповідальної особи.',
   VOTE_SUBMIT_FAILED: 'Не вдалося зберегти голос. Спробуйте ще раз.',
 };
 

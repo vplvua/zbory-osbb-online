@@ -12,10 +12,24 @@ export type OwnerFormState = {
   error?: string;
 };
 
+const OWNER_ORGANIZER_EMAIL_CONFLICT_ERROR =
+  'Email співвласника не може співпадати з email відповідальної особи ОСББ.';
+
 function normalizeOptional(value?: string) {
   if (!value) return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function normalizeEmail(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function hasSameEmail(left: string | null | undefined, right: string | null | undefined): boolean {
+  const leftEmail = normalizeEmail(left);
+  const rightEmail = normalizeEmail(right);
+  return leftEmail !== null && rightEmail !== null && leftEmail === rightEmail;
 }
 
 function getOwnerFormData(formData: FormData) {
@@ -88,6 +102,24 @@ async function getSelectedOsbbOrError(userId: string): Promise<{ id: string } | 
   return selectedState.selectedOsbb ? { id: selectedState.selectedOsbb.id } : null;
 }
 
+async function getOrganizerEmailForSelectedOsbb(
+  userId: string,
+  osbbId: string,
+): Promise<string | null> {
+  const osbb = await prisma.oSBB.findFirst({
+    where: {
+      id: osbbId,
+      userId,
+      isDeleted: false,
+    },
+    select: {
+      organizerEmail: true,
+    },
+  });
+
+  return osbb?.organizerEmail ?? null;
+}
+
 export async function createOwnerAction(
   _: OwnerFormState,
   formData: FormData,
@@ -105,6 +137,11 @@ export async function createOwnerAction(
   const parsed = ownerSchema.safeParse(getOwnerFormData(formData));
   if (!parsed.success) {
     return { error: 'Перевірте обовʼязкові поля співвласника.' };
+  }
+
+  const organizerEmail = await getOrganizerEmailForSelectedOsbb(session.sub, selectedOsbb.id);
+  if (hasSameEmail(parsed.data.email, organizerEmail)) {
+    return { error: OWNER_ORGANIZER_EMAIL_CONFLICT_ERROR };
   }
 
   if (parsed.data.phone && !isValidPhone(parsed.data.phone)) {
@@ -186,6 +223,11 @@ export async function updateOwnerAction(
   const parsed = ownerSchema.safeParse(getOwnerFormData(formData));
   if (!parsed.success) {
     return { error: 'Перевірте обовʼязкові поля співвласника.' };
+  }
+
+  const organizerEmail = await getOrganizerEmailForSelectedOsbb(session.sub, selectedOsbb.id);
+  if (hasSameEmail(parsed.data.email, organizerEmail)) {
+    return { error: OWNER_ORGANIZER_EMAIL_CONFLICT_ERROR };
   }
 
   if (

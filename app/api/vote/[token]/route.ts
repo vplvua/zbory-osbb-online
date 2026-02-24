@@ -85,6 +85,23 @@ function isDubidocDocumentNotFoundError(error: unknown): boolean {
   return code === 'DUBIDOC_HTTP_404' || code === 'DUBIDOC_MOCK_DOCUMENT_NOT_FOUND';
 }
 
+type VoteSigningNotConfiguredReason =
+  | typeof OWNER_EMAIL_REQUIRED_ERROR
+  | typeof ORGANIZER_EMAIL_REQUIRED_ERROR
+  | typeof SIGNERS_EMAIL_CONFLICT_ERROR;
+
+function getVoteSigningNotConfiguredMessage(reason: VoteSigningNotConfiguredReason): string {
+  if (reason === OWNER_EMAIL_REQUIRED_ERROR) {
+    return 'У картці співвласника не вказано email для підписання. Зверніться до уповноваженої особи ОСББ.';
+  }
+
+  if (reason === ORGANIZER_EMAIL_REQUIRED_ERROR) {
+    return 'У налаштуваннях ОСББ не вказано email уповноваженої особи для підписання.';
+  }
+
+  return 'Email співвласника та уповноваженої особи мають відрізнятися.';
+}
+
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ token: string }> },
@@ -356,15 +373,19 @@ export async function POST(
           error.name === ORGANIZER_EMAIL_REQUIRED_ERROR ||
           error.name === SIGNERS_EMAIL_CONFLICT_ERROR)
       ) {
-        const message =
-          error.name === SIGNERS_EMAIL_CONFLICT_ERROR
-            ? 'Email співвласника та уповноваженої особи мають відрізнятися.'
-            : 'Налаштування підписання неповні. Зверніться до уповноваженої особи ОСББ.';
+        const reason = error.name as VoteSigningNotConfiguredReason;
+        const message = getVoteSigningNotConfiguredMessage(reason);
+        console.warn('[vote:submit] signing not configured', {
+          sheetId: sheet.id,
+          token,
+          reason,
+        });
         await markSheetDubidocSignFailed(sheet.id, message);
         return apiErrorResponse({
           status: 409,
           code: 'VOTE_SIGNING_NOT_CONFIGURED',
           message,
+          details: { reason },
         });
       }
 
