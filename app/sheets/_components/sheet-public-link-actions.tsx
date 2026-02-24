@@ -177,6 +177,11 @@ export default function SheetPublicLinkActions({ votePath }: SheetPublicLinkActi
     }
   }
 
+  async function handleCopyFromShareMenu() {
+    setIsShareMenuOpen(false);
+    await handleCopy();
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Link href={votePath} className="inline-flex" title="Перейти за посиланням">
@@ -189,23 +194,13 @@ export default function SheetPublicLinkActions({ votePath }: SheetPublicLinkActi
           <span>Перейти</span>
         </Button>
       </Link>
-      <Button
-        type="button"
-        variant="outline"
-        className="border-brand/40 bg-brand/5 text-brand hover:bg-brand/10 h-8 px-3 text-xs"
-        onClick={handleCopy}
-        title="Скопіювати посилання"
-      >
-        <CopyIcon className="h-4 w-4 shrink-0" />
-        <span>Копіювати</span>
-      </Button>
       <div ref={shareMenuRef} className="relative inline-flex">
         <Button
           type="button"
           variant="outline"
           className="border-brand/40 bg-brand/5 text-brand hover:bg-brand/10 h-8 px-3 text-xs"
           onClick={() => setIsShareMenuOpen((isOpen) => !isOpen)}
-          title="Поділитись посиланням"
+          title="Поділитись або скопіювати посилання"
           aria-haspopup="menu"
           aria-expanded={isShareMenuOpen}
         >
@@ -216,12 +211,21 @@ export default function SheetPublicLinkActions({ votePath }: SheetPublicLinkActi
           <div
             role="menu"
             aria-label="Поділитись посиланням"
-            className="border-border bg-background absolute top-full left-0 z-10 mt-1 min-w-44 rounded-md border p-1 shadow-sm"
+            className="border-brand/40 absolute top-full left-0 z-10 mt-1 min-w-44 rounded-md border bg-[#F6F5FF] p-1 shadow-sm"
           >
             <button
               type="button"
               role="menuitem"
-              className="focus-visible:ring-ring focus-visible:ring-offset-background hover:bg-brand/15 focus-visible:bg-brand/10 hover:text-brand flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="focus-visible:ring-ring focus-visible:ring-offset-background hover:text-brand flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors duration-150 hover:bg-[#F7F8FA] focus-visible:bg-[#F7F8FA] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              onClick={handleCopyFromShareMenu}
+            >
+              <CopyIcon className="h-4 w-4 shrink-0" />
+              <span>Копіювати</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="focus-visible:ring-ring focus-visible:ring-offset-background hover:text-brand flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors duration-150 hover:bg-[#F7F8FA] focus-visible:bg-[#F7F8FA] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               onClick={() => handleShare('viber')}
             >
               <ViberIcon className="h-4 w-4 shrink-0" />
@@ -230,7 +234,7 @@ export default function SheetPublicLinkActions({ votePath }: SheetPublicLinkActi
             <button
               type="button"
               role="menuitem"
-              className="focus-visible:ring-ring focus-visible:ring-offset-background hover:bg-brand/15 focus-visible:bg-brand/10 hover:text-brand flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="focus-visible:ring-ring focus-visible:ring-offset-background hover:text-brand flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors duration-150 hover:bg-[#F7F8FA] focus-visible:bg-[#F7F8FA] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               onClick={() => handleShare('telegram')}
             >
               <TelegramIcon className="h-4 w-4 shrink-0" />
@@ -239,7 +243,7 @@ export default function SheetPublicLinkActions({ votePath }: SheetPublicLinkActi
             <button
               type="button"
               role="menuitem"
-              className="focus-visible:ring-ring focus-visible:ring-offset-background hover:bg-brand/15 focus-visible:bg-brand/10 hover:text-brand flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="focus-visible:ring-ring focus-visible:ring-offset-background hover:text-brand flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors duration-150 hover:bg-[#F7F8FA] focus-visible:bg-[#F7F8FA] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               onClick={() => handleShare('whatsapp')}
             >
               <WhatsAppIcon className="h-4 w-4 shrink-0" />

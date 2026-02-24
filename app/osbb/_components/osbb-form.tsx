@@ -78,12 +78,12 @@ export default function OsbbForm({
               ) : null}
 
               <div className="space-y-2">
-                <Label htmlFor="name">Повна назва</Label>
+                <Label htmlFor="name">Повне найменування</Label>
                 <Input id="name" name="name" defaultValue={defaultValues?.name ?? ''} required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="shortName">Коротка назва</Label>
+                <Label htmlFor="shortName">Скорочене найменування</Label>
                 <Input
                   id="shortName"
                   name="shortName"
