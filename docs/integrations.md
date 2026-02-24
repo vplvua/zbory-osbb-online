@@ -83,10 +83,28 @@ Production endpoint:
 
 - `POST /api/webhooks/dubidoc`
 
-Optional temporary guard:
+Verification policy:
 
-- Set `DUBIDOC_WEBHOOK_SECRET`
-- Send value in `x-dubidoc-webhook-secret`
+- Production: `DUBIDOC_WEBHOOK_SECRET` is mandatory.
+- Request must include matching `x-dubidoc-webhook-secret`.
+- Missing secret in production -> `503` (misconfiguration).
+- Invalid/missing webhook header -> `401`.
+
+Replay/idempotency policy:
+
+- State transitions are idempotent (`updateMany` with state guards), so duplicate events do not apply duplicate state changes.
+- Ambiguous `SIGNATURE` events without participant identity (`participantRole`/known email) are ignored to avoid replay-driven misclassification.
+
+Current limitations:
+
+- Shared-secret check validates origin knowledge only and does not provide cryptographic payload integrity/non-repudiation.
+
+Migration path to official Dubidoc signature verification:
+
+1. Add official signature headers/body canonicalization from Dubidoc docs.
+2. Verify request signature before JSON parsing/state processing.
+3. Keep shared-secret as fallback during rollout, then remove once provider signature is stable across environments.
+4. Update `DECISIONS.md` and this document when migration is completed.
 
 Dev simulator (mock mode only):
 

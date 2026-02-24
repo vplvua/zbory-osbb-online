@@ -38,6 +38,7 @@ const dubidocWebhookPayloadSchema = z
 export type DubidocWebhookPayload = z.infer<typeof dubidocWebhookPayloadSchema>;
 
 export type DubidocWebhookAction = 'OWNER_SIGNED' | 'ORGANIZER_SIGNED' | 'SIGNATURE';
+export type DubidocWebhookParticipantRole = z.infer<typeof webhookRoleSchema>;
 
 export type DubidocWebhookEvent = {
   eventId: string | null;
@@ -45,6 +46,7 @@ export type DubidocWebhookEvent = {
   documentId: string;
   action: DubidocWebhookAction;
   occurredAt: Date;
+  participantRole: DubidocWebhookParticipantRole | null;
   participantEmail: string | null;
 };
 
@@ -137,8 +139,22 @@ function normalizeEmail(value?: string | null): string | null {
   return normalized ? normalized : null;
 }
 
+function isProductionRuntime(): boolean {
+  const vercelEnv = process.env.VERCEL_ENV?.trim().toLowerCase();
+  return vercelEnv === 'production' || process.env.NODE_ENV === 'production';
+}
+
 export function verifyDubidocWebhookRequest(request: Request): WebhookVerificationResult {
   const sharedSecret = process.env.DUBIDOC_WEBHOOK_SECRET?.trim();
+  if (isProductionRuntime() && !sharedSecret) {
+    return {
+      ok: false,
+      status: 503,
+      message:
+        'Webhook misconfigured: DUBIDOC_WEBHOOK_SECRET is required in production for /api/webhooks/dubidoc.',
+    };
+  }
+
   if (!sharedSecret) {
     return { ok: true };
   }
@@ -196,6 +212,7 @@ export function parseDubidocWebhookPayload(payload: unknown): ParseWebhookResult
           raw.payload?.signedAt ??
           raw.data?.payload?.signedAt,
       ),
+      participantRole: participantRole ?? null,
       participantEmail,
     },
   };
@@ -232,7 +249,15 @@ async function readSheetByDocumentId(documentId: string) {
 function inferSignatureAction(
   sheet: NonNullable<Awaited<ReturnType<typeof readSheetByDocumentId>>>,
   event: DubidocWebhookEvent,
-): 'OWNER_SIGNED' | 'ORGANIZER_SIGNED' {
+): 'OWNER_SIGNED' | 'ORGANIZER_SIGNED' | null {
+  if (event.participantRole === 'OWNER') {
+    return 'OWNER_SIGNED';
+  }
+
+  if (event.participantRole === 'ORGANIZER') {
+    return 'ORGANIZER_SIGNED';
+  }
+
   const ownerEmail = normalizeEmail(sheet.owner.email);
   const organizerEmail = normalizeEmail(sheet.protocol.osbb.organizerEmail);
   const participantEmail = normalizeEmail(event.participantEmail);
@@ -245,15 +270,7 @@ function inferSignatureAction(
     return 'ORGANIZER_SIGNED';
   }
 
-  if (!sheet.ownerSignedAt) {
-    return 'OWNER_SIGNED';
-  }
-
-  if (!sheet.organizerSignedAt) {
-    return 'ORGANIZER_SIGNED';
-  }
-
-  return 'ORGANIZER_SIGNED';
+  return null;
 }
 
 async function applyOwnerSigned(event: DubidocWebhookEvent): Promise<ProcessWebhookResult> {
@@ -444,6 +461,19 @@ export async function processDubidocWebhookEvent(
   }
 
   const inferredAction = inferSignatureAction(sheet, event);
+  if (!inferredAction) {
+    return {
+      ok: true,
+      processed: false,
+      duplicate: false,
+      ignored: true,
+      message:
+        'Подію SIGNATURE проігноровано: неможливо безпечно визначити підписанта без participantRole/email.',
+      sheetId: sheet.id,
+      status: sheet.status,
+    };
+  }
+
   if (inferredAction === 'OWNER_SIGNED') {
     return applyOwnerSigned({ ...event, action: 'OWNER_SIGNED' });
   }

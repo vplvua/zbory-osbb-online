@@ -254,6 +254,7 @@ export async function refreshSheetSigningStatusFromDubidoc(
         documentId: status.documentId,
         action: 'OWNER_SIGNED',
         occurredAt: parseIsoDate(status.ownerSignedAt),
+        participantRole: 'OWNER',
         participantEmail: null,
       });
 
@@ -274,6 +275,7 @@ export async function refreshSheetSigningStatusFromDubidoc(
       documentId: status.documentId,
       action: 'OWNER_SIGNED',
       occurredAt: ownerEventAt,
+      participantRole: 'OWNER',
       participantEmail: null,
     });
 
@@ -283,6 +285,7 @@ export async function refreshSheetSigningStatusFromDubidoc(
       documentId: status.documentId,
       action: 'ORGANIZER_SIGNED',
       occurredAt: organizerEventAt,
+      participantRole: 'ORGANIZER',
       participantEmail: null,
     });
 
