@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { classifyError, CriticalError, PermanentError, TemporaryError } from '@/lib/errors';
 import { assertIntegrationEnvGuardrails, isConfiguredEnvValue } from '@/lib/integrations/env-guard';
+import { getOpsErrorFields, logOpsError, logOpsInfo, logOpsWarn } from '@/lib/logging/ops';
 import { retryPresets, withRetry } from '@/lib/retry/withRetry';
 
 export interface SmsService {
@@ -255,6 +256,15 @@ function assertSmsPayload(phone: string, code: string): void {
   }
 }
 
+function maskPhone(phone: string): string {
+  const normalized = phone.trim();
+  if (normalized.length <= 4) {
+    return '***';
+  }
+
+  return `${normalized.slice(0, 4)}***${normalized.slice(-2)}`;
+}
+
 export class TurboSmsAdapter implements SmsService {
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -345,17 +355,56 @@ export class TurboSmsAdapter implements SmsService {
   async sendCode(phone: string, code: string): Promise<boolean> {
     assertSmsPayload(phone, code);
 
-    return withRetry(async ({ signal }) => this.sendWithProvider(phone, code, signal), {
-      ...retryPresets.turbosms,
-      shouldRetry: (error) => classifyError(error) instanceof TemporaryError,
-      onRetry: ({ attempt, nextDelayMs }) => {
-        console.warn('[turbosms:http] request retry scheduled', {
+    let lastAttempt = 1;
+
+    try {
+      const sent = await withRetry(
+        async ({ signal, attempt }) => {
+          lastAttempt = attempt;
+          return this.sendWithProvider(phone, code, signal);
+        },
+        {
+          ...retryPresets.turbosms,
+          shouldRetry: (error) => classifyError(error) instanceof TemporaryError,
+          onRetry: ({ attempt, maxAttempts, nextDelayMs, error }) => {
+            logOpsWarn({
+              component: 'sms',
+              event: 'provider_request_retry_scheduled',
+              outcome: 'retry_scheduled',
+              attempt,
+              maxAttempts,
+              retryInMs: nextDelayMs,
+              path: TURBOSMS_SEND_PATH,
+              ...getOpsErrorFields(error),
+            });
+          },
+        },
+      );
+
+      if (lastAttempt > 1) {
+        logOpsInfo({
+          component: 'sms',
+          event: 'provider_request_retry_success',
+          outcome: 'retry_success',
+          attempt: lastAttempt,
+          maxAttempts: retryPresets.turbosms.maxAttempts,
           path: TURBOSMS_SEND_PATH,
-          attempt,
-          retryInMs: nextDelayMs,
         });
-      },
-    });
+      }
+
+      return sent;
+    } catch (error) {
+      logOpsError({
+        component: 'sms',
+        event: 'provider_request_failed',
+        outcome: 'final_fail',
+        attempt: lastAttempt,
+        maxAttempts: retryPresets.turbosms.maxAttempts,
+        path: TURBOSMS_SEND_PATH,
+        ...getOpsErrorFields(error),
+      });
+      throw error;
+    }
   }
 }
 
@@ -364,7 +413,7 @@ export class DevMockSmsAdapter implements SmsService {
     assertSmsPayload(phone, code);
 
     // Dev-only mock: log the code instead of sending SMS.
-    console.info(`[SMS:MOCK] ${phone} -> ${code}`);
+    console.info(`[SMS:MOCK] ${maskPhone(phone)} -> ${code}`);
     return true;
   }
 }

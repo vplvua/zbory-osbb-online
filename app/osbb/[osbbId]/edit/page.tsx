@@ -47,6 +47,7 @@ export default async function OsbbEditPage({ params }: EditPageProps) {
             formId="osbb-edit-form"
             showSubmitButton={false}
             submitLabel="Зберегти"
+            leaveConfirmationMessage="Внесені зміни не будуть збережені. Ви дійсно бажаєте залишити сторінку?"
             defaultValues={{
               id: osbb.id,
               name: osbb.name,

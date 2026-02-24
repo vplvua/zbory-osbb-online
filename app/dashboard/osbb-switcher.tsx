@@ -6,6 +6,8 @@ import { createPortal } from 'react-dom';
 import { selectOsbbAction } from '@/app/dashboard/actions';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { cn } from '@/lib/utils';
 import type { OsbbSummary } from '@/lib/osbb/selected-osbb';
 
 type OsbbSwitcherProps = {
@@ -20,7 +22,9 @@ export default function OsbbSwitcher({
   requireSelection,
 }: OsbbSwitcherProps) {
   const [open, setOpen] = useState(false);
+  const [pendingOsbbId, setPendingOsbbId] = useState<string | null>(null);
   const isOpen = requireSelection || open;
+  const isSwitching = pendingOsbbId !== null;
 
   useEffect(() => {
     if (!isOpen) {
@@ -31,7 +35,7 @@ export default function OsbbSwitcher({
     document.body.style.overflow = 'hidden';
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !requireSelection) {
+      if (event.key === 'Escape' && !requireSelection && !isSwitching) {
         setOpen(false);
       }
     };
@@ -41,7 +45,7 @@ export default function OsbbSwitcher({
       window.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = previousOverflow;
     };
-  }, [isOpen, requireSelection]);
+  }, [isOpen, isSwitching, requireSelection]);
 
   const title = useMemo(
     () => (requireSelection ? 'Оберіть ОСББ для роботи' : 'Змінити ОСББ'),
@@ -49,7 +53,7 @@ export default function OsbbSwitcher({
   );
 
   const closeModal = () => {
-    if (requireSelection) {
+    if (requireSelection || isSwitching) {
       return;
     }
 
@@ -62,6 +66,7 @@ export default function OsbbSwitcher({
         type="button"
         variant="outline"
         className="shrink-0 whitespace-nowrap"
+        disabled={isSwitching}
         onClick={() => setOpen(true)}
       >
         Змінити ОСББ
@@ -77,7 +82,10 @@ export default function OsbbSwitcher({
                 onClick={closeModal}
               />
 
-              <div className="border-border bg-surface relative z-10 w-full max-w-2xl rounded-xl border p-5 shadow-md">
+              <div
+                className="border-border bg-surface relative z-10 w-full max-w-2xl rounded-xl border p-5 shadow-md"
+                aria-busy={isSwitching}
+              >
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-semibold">{title}</h2>
@@ -86,7 +94,12 @@ export default function OsbbSwitcher({
                     </p>
                   </div>
                   {!requireSelection ? (
-                    <Button type="button" variant="ghost" onClick={closeModal}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={closeModal}
+                      disabled={isSwitching}
+                    >
                       Закрити
                     </Button>
                   ) : null}
@@ -94,14 +107,32 @@ export default function OsbbSwitcher({
 
                 <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
                   {osbbs.map((osbb) => (
-                    <form key={osbb.id} action={selectOsbbAction}>
+                    <form
+                      key={osbb.id}
+                      action={selectOsbbAction}
+                      onSubmit={() => setPendingOsbbId(osbb.id)}
+                      data-submitting={pendingOsbbId === osbb.id ? 'true' : 'false'}
+                    >
                       <input type="hidden" name="osbbId" value={osbb.id} />
                       <button
                         type="submit"
-                        className={`border-border hover:bg-surface-muted w-full rounded-lg border p-4 text-left transition ${selectedOsbbId === osbb.id ? 'border-brand bg-surface-muted border-2' : ''}`}
+                        disabled={isSwitching}
+                        aria-busy={pendingOsbbId === osbb.id}
+                        className={cn(
+                          'border-border w-full rounded-lg border p-4 text-left transition',
+                          !isSwitching && 'hover:bg-surface-muted',
+                          isSwitching && 'cursor-wait opacity-70',
+                          selectedOsbbId === osbb.id && 'border-brand bg-surface-muted border-2',
+                        )}
                       >
                         <p className="text-base font-semibold">{osbb.shortName}</p>
                         <p className="text-muted-foreground mt-1 text-sm">{osbb.address}</p>
+                        {pendingOsbbId === osbb.id ? (
+                          <p className="text-muted-foreground mt-3 flex items-center gap-2 text-sm">
+                            <LoadingSpinner className="h-3.5 w-3.5" />
+                            Перемикаємо...
+                          </p>
+                        ) : null}
                       </button>
                     </form>
                   ))}
@@ -109,7 +140,7 @@ export default function OsbbSwitcher({
 
                 <div className="mt-5 flex justify-end">
                   <Link href="/osbb/new">
-                    <Button type="button">
+                    <Button type="button" disabled={isSwitching}>
                       <AddIcon className="h-4 w-4" />
                       Додати ОСББ
                     </Button>

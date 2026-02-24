@@ -1,4 +1,5 @@
 import { apiErrorResponse } from '@/lib/api/error-response';
+import { getOpsErrorFields, logOpsError } from '@/lib/logging/ops';
 import { isValidPublicToken } from '@/lib/tokens';
 import { makeDownloadResponse, parseSheetDownloadKind } from '@/lib/sheet/download-route';
 import { preparePublicSheetDownload } from '@/lib/sheet/downloads';
@@ -86,7 +87,13 @@ export async function GET(
       }
     }
 
-    console.error('[vote:download] failed', { token, kind, error });
+    logOpsError({
+      component: 'vote-download',
+      event: 'prepare_failed',
+      outcome: 'final_fail',
+      kind,
+      ...getOpsErrorFields(error),
+    });
     return apiErrorResponse({
       status: 500,
       code: 'DOWNLOAD_PREPARE_FAILED',

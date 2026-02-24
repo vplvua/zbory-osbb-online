@@ -121,6 +121,7 @@ export default async function OwnerEditPage({ params }: OwnerEditPageProps) {
             formId={OWNER_EDIT_FORM_ID}
             showSubmitButton={false}
             isDisabled={isEditLocked}
+            leaveConfirmationMessage="Внесені зміни не будуть збережені. Ви дійсно бажаєте вийти?"
             defaultValues={{
               ownerId: owner.id,
               lastName: owner.lastName,

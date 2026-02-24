@@ -4,6 +4,7 @@ import { type ReactNode, type SVGProps, useEffect, useId, useMemo, useState } fr
 import DownloadIcon from '@/components/icons/download-icon';
 import { Button } from '@/components/ui/button';
 import { DownloadActionButton } from '@/components/ui/download-action-button';
+import { cn } from '@/lib/utils';
 
 type SheetDownloadActionsProps = {
   downloadBasePath: string;
@@ -19,6 +20,7 @@ type DownloadOption = {
   description: string;
   pendingLabel: string;
   icon: ReactNode;
+  disabled?: boolean;
 };
 
 function PdfFileIcon({ className }: { className?: string }) {
@@ -86,38 +88,41 @@ export default function SheetDownloadActions({
   const hasAvailableDownloads = canDownloadOriginal || canDownloadDubidocVariants;
 
   const downloadOptions = useMemo<DownloadOption[]>(() => {
-    const options: DownloadOption[] = [];
-    if (canDownloadOriginal) {
-      options.push({
+    return [
+      {
         id: 'original',
         href: `${downloadBasePath}/original`,
         title: 'Оригінальний документ',
-        description: 'У початковому вигляді без змін та підписів',
+        description: canDownloadOriginal
+          ? 'У початковому вигляді без змін та підписів'
+          : 'Файл стане доступним після генерації документа',
         pendingLabel: 'Завантаження PDF...',
         icon: <PdfFileIcon className="h-5 w-5" />,
-      });
-    }
-
-    if (canDownloadDubidocVariants) {
-      options.push({
+        disabled: !canDownloadOriginal,
+      },
+      {
         id: 'signed',
         href: `${downloadBasePath}/signed`,
         title: 'Підписаний документ',
-        description: 'З електронним підписом у форматі .p7s',
+        description: canDownloadDubidocVariants
+          ? 'З електронним підписом у форматі .p7s'
+          : 'Буде доступний після повного підписання листка',
         pendingLabel: 'Завантаження .p7s...',
         icon: <SignedFileIcon className="h-5 w-5" />,
-      });
-      options.push({
+        disabled: !canDownloadDubidocVariants,
+      },
+      {
         id: 'printable',
         href: `${downloadBasePath}/printable`,
         title: 'Версію для друку',
-        description: 'Документ з протоколом підписання',
+        description: canDownloadDubidocVariants
+          ? 'Документ з протоколом підписання'
+          : 'Буде доступна після повного підписання листка',
         pendingLabel: 'Завантаження PDF...',
         icon: <PrintIcon className="h-5 w-5" />,
-      });
-    }
-
-    return options;
+        disabled: !canDownloadDubidocVariants,
+      },
+    ];
   }, [canDownloadDubidocVariants, canDownloadOriginal, downloadBasePath]);
 
   useEffect(() => {
@@ -201,14 +206,30 @@ export default function SheetDownloadActions({
                   }}
                   pendingLabel={option.pendingLabel}
                   variant="ghost"
-                  className="border-border bg-surface-muted hover:bg-surface hover:border-border/80 h-auto w-full flex-row-reverse justify-between rounded-lg border px-4 py-3 transition-[background-color,box-shadow,border-color] duration-150 hover:shadow-sm"
+                  disabled={option.disabled}
+                  className={cn(
+                    'h-auto w-full flex-row-reverse justify-between rounded-lg border px-4 py-3 transition-[background-color,box-shadow,border-color,color] duration-150',
+                    option.disabled
+                      ? 'border-border/70 bg-surface text-muted-foreground cursor-not-allowed shadow-none'
+                      : 'border-border bg-surface-muted hover:bg-surface hover:border-border/80 hover:shadow-sm',
+                  )}
                   icon={option.icon}
                   label={
                     <span className="mr-3 flex min-w-0 flex-1 flex-col items-start gap-1 text-left">
-                      <span className="text-foreground text-base leading-tight font-semibold">
+                      <span
+                        className={cn(
+                          'text-base leading-tight font-semibold',
+                          option.disabled ? 'text-muted-foreground' : 'text-foreground',
+                        )}
+                      >
                         {option.title}
                       </span>
-                      <span className="text-muted-foreground text-sm leading-snug font-normal">
+                      <span
+                        className={cn(
+                          'text-sm leading-snug font-normal',
+                          option.disabled ? 'text-muted-foreground/90' : 'text-muted-foreground',
+                        )}
+                      >
                         {option.description}
                       </span>
                     </span>

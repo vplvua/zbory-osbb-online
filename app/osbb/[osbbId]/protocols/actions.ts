@@ -125,6 +125,17 @@ async function ensureOsbbOwner(osbbId: string, userId: string) {
   });
 }
 
+async function hasSheets(protocolId: string) {
+  const sheet = await prisma.sheet.findFirst({
+    where: {
+      protocolId,
+    },
+    select: { id: true },
+  });
+
+  return Boolean(sheet);
+}
+
 async function hasSignedSheets(protocolId: string) {
   const signed = await prisma.sheet.findFirst({
     where: {
@@ -199,8 +210,8 @@ export async function updateProtocolAction(
     return { error: 'Протокол не знайдено.' };
   }
 
-  if (await hasSignedSheets(protocolId)) {
-    return { error: 'Неможливо редагувати протокол з підписаними листками.' };
+  if (await hasSheets(protocolId)) {
+    return { error: 'Неможливо редагувати протокол, якщо вже є листки опитування.' };
   }
 
   const parsed = protocolSchema.safeParse(getProtocolFormData(formData));
@@ -350,8 +361,8 @@ export async function addQuestionAction(
     return { error: 'Протокол не знайдено.' };
   }
 
-  if (await hasSignedSheets(protocolId)) {
-    return { error: 'Неможливо редагувати протокол з підписаними листками.' };
+  if (await hasSheets(protocolId)) {
+    return { error: 'Неможливо редагувати протокол, якщо вже є листки опитування.' };
   }
 
   const parsed = questionSchema.safeParse(getQuestionFormData(formData));
@@ -405,8 +416,8 @@ export async function updateQuestionAction(
     return { error: 'Питання не знайдено.' };
   }
 
-  if (await hasSignedSheets(question.protocolId)) {
-    return { error: 'Неможливо редагувати протокол з підписаними листками.' };
+  if (await hasSheets(question.protocolId)) {
+    return { error: 'Неможливо редагувати протокол, якщо вже є листки опитування.' };
   }
 
   const parsed = questionSchema.safeParse(getQuestionFormData(formData));
@@ -463,8 +474,8 @@ export async function deleteQuestionAction(
     return { error: 'Питання не знайдено.' };
   }
 
-  if (await hasSignedSheets(question.protocolId)) {
-    return { error: 'Неможливо редагувати протокол з підписаними листками.' };
+  if (await hasSheets(question.protocolId)) {
+    return { error: 'Неможливо редагувати протокол, якщо вже є листки опитування.' };
   }
 
   await prisma.question.delete({ where: { id: question.id } });

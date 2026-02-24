@@ -396,7 +396,15 @@ export async function organizerSignSheetAction(
     return { error: 'Листок не знайдено.' };
   }
 
-  const sheet = await getSheetForSelectedOsbb(sheetId, selectedOsbbId, session.sub);
+  return prepareOrganizerSigningUrl(sheetId, selectedOsbbId, session.sub);
+}
+
+async function prepareOrganizerSigningUrl(
+  sheetId: string,
+  selectedOsbbId: string,
+  userId: string,
+): Promise<SheetFormState> {
+  const sheet = await getSheetForSelectedOsbb(sheetId, selectedOsbbId, userId);
   if (!sheet) {
     return { error: 'Листок не знайдено.' };
   }
@@ -454,6 +462,28 @@ export async function organizerSignSheetAction(
 
   await clearSheetDubidocSignState(sheet.id);
   return { signingUrl };
+}
+
+export async function organizerSignShareLinkAction(
+  _: SheetFormState,
+  formData: FormData,
+): Promise<SheetFormState> {
+  const session = await getSessionPayload();
+  if (!session) {
+    return { error: 'Потрібна авторизація.' };
+  }
+
+  const selectedOsbbId = await getSelectedOsbbId(session.sub);
+  if (!selectedOsbbId) {
+    return { error: 'Оберіть ОСББ на дашборді.' };
+  }
+
+  const sheetId = String(formData.get('sheetId') ?? '');
+  if (!sheetId) {
+    return { error: 'Листок не знайдено.' };
+  }
+
+  return prepareOrganizerSigningUrl(sheetId, selectedOsbbId, session.sub);
 }
 
 export async function refreshSheetSigningStatusAction(

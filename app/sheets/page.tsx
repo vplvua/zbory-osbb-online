@@ -10,6 +10,7 @@ import SheetRetryForm from '@/app/sheets/_components/sheet-retry-form';
 import SheetsSearch from '@/app/sheets/_components/sheets-search';
 import {
   deleteSheetAction,
+  organizerSignShareLinkAction,
   organizerSignSheetAction,
   refreshSheetSigningStatusAction,
   retrySheetPdfAction,
@@ -449,7 +450,9 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">Публічне посилання</p>
+                          <p className="text-sm font-medium">
+                            Публічне посилання (для співвласника)
+                          </p>
                           <SheetPublicLinkActions votePath={votePath} />
                         </div>
                       </div>
@@ -472,6 +475,7 @@ export default async function SheetsPage({ searchParams }: SheetsPageProps) {
                             redirectTo={currentSheetsHref}
                             disabled={sheet.dubidocSignPending}
                             signAction={organizerSignSheetAction}
+                            shareAction={organizerSignShareLinkAction}
                             refreshAction={refreshSheetSigningStatusAction}
                           />
                         </div>

@@ -25,6 +25,16 @@ function SheetsIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function AlertTriangleIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="M12 3 2 21h20L12 3Z" />
+      <path d="M12 9v6" />
+      <path d="M12 18h.01" />
+    </svg>
+  );
+}
+
 export default async function ProtocolEditPage({
   params,
 }: {
@@ -74,21 +84,35 @@ export default async function ProtocolEditPage({
       },
     }),
   ]);
+  const isEditLocked = createdSheetsCount > 0;
 
   return (
     <div className="flex h-screen flex-col">
       <AppHeader
         title={protocol.osbb.shortName}
         containerClassName="max-w-4xl"
-        actionNode={<ProtocolEditSaveButton formId={PROTOCOL_EDIT_FORM_ID} />}
+        actionNode={
+          <ProtocolEditSaveButton formId={PROTOCOL_EDIT_FORM_ID} isLocked={isEditLocked} />
+        }
         backLink={{ href: `/osbb/${protocol.osbbId}/protocols`, label: '← Назад до протоколів' }}
       />
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8">
+          {isEditLocked ? (
+            <section className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+              <AlertTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" />
+              <p className="text-sm font-medium">
+                Неможливо редагувати протокол, якщо вже є листки опитування.
+              </p>
+            </section>
+          ) : null}
+
           <ProtocolEditForm
             formId={PROTOCOL_EDIT_FORM_ID}
             action={updateProtocolAction}
+            leaveConfirmationMessage="Внесені зміни не будуть збережені. Ви дійсно бажаєте вийти?"
+            isDisabled={isEditLocked}
             defaultValues={{
               protocolId: protocol.id,
               number: protocol.number,

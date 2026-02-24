@@ -8,6 +8,7 @@ import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type ProtocolEditSaveButtonProps = {
   formId: string;
+  isLocked?: boolean;
 };
 
 function buildFormSnapshot(form: HTMLFormElement): string {
@@ -19,7 +20,10 @@ function buildFormSnapshot(form: HTMLFormElement): string {
   return JSON.stringify(entries);
 }
 
-export default function ProtocolEditSaveButton({ formId }: ProtocolEditSaveButtonProps) {
+export default function ProtocolEditSaveButton({
+  formId,
+  isLocked = false,
+}: ProtocolEditSaveButtonProps) {
   const initialSnapshotRef = useRef<string | null>(null);
   const [canSubmit, setCanSubmit] = useState(false);
   const isPending = useExternalFormPending(formId);
@@ -58,7 +62,7 @@ export default function ProtocolEditSaveButton({ formId }: ProtocolEditSaveButto
   }, [formId]);
 
   return (
-    <Button type="submit" form={formId} disabled={!canSubmit || isPending}>
+    <Button type="submit" form={formId} disabled={isLocked || !canSubmit || isPending}>
       {isPending ? <LoadingSpinner className="h-4 w-4" /> : null}
       {isPending ? 'Збереження...' : 'Зберегти'}
     </Button>

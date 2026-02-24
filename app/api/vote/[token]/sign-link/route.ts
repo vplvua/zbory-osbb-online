@@ -16,6 +16,23 @@ import {
   markSheetDubidocSignPending,
 } from '@/lib/vote/dubidoc-sign-state';
 
+type VoteSigningNotConfiguredReason =
+  | typeof OWNER_EMAIL_REQUIRED_ERROR
+  | typeof ORGANIZER_EMAIL_REQUIRED_ERROR
+  | typeof SIGNERS_EMAIL_CONFLICT_ERROR;
+
+function getVoteSigningNotConfiguredMessage(reason: VoteSigningNotConfiguredReason): string {
+  if (reason === OWNER_EMAIL_REQUIRED_ERROR) {
+    return 'У картці співвласника не вказано email для підписання. Зверніться до уповноваженої особи ОСББ.';
+  }
+
+  if (reason === ORGANIZER_EMAIL_REQUIRED_ERROR) {
+    return 'У налаштуваннях ОСББ не вказано email уповноваженої особи для підписання.';
+  }
+
+  return 'Email співвласника та уповноваженої особи мають відрізнятися.';
+}
+
 async function markDraftAsExpired(sheetId: string) {
   await prisma.sheet.updateMany({
     where: {
@@ -158,15 +175,19 @@ export async function POST(
         error.name === ORGANIZER_EMAIL_REQUIRED_ERROR ||
         error.name === SIGNERS_EMAIL_CONFLICT_ERROR)
     ) {
-      const message =
-        error.name === SIGNERS_EMAIL_CONFLICT_ERROR
-          ? 'Email співвласника та уповноваженої особи мають відрізнятися.'
-          : 'Налаштування підписання неповні. Зверніться до уповноваженої особи ОСББ.';
+      const reason = error.name as VoteSigningNotConfiguredReason;
+      const message = getVoteSigningNotConfiguredMessage(reason);
+      console.warn('[vote:sign-link] signing not configured', {
+        sheetId: sheet.id,
+        token,
+        reason,
+      });
       await markSheetDubidocSignFailed(sheet.id, message);
       return apiErrorResponse({
         status: 409,
         code: 'VOTE_SIGNING_NOT_CONFIGURED',
         message,
+        details: { reason },
       });
     }
 

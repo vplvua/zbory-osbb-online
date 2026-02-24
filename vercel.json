@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/deferred-queue",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": true,

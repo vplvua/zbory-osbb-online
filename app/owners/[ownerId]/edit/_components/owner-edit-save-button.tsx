@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { isFormValid } from '@/lib/forms/is-form-valid';
 import { useExternalFormPending } from '@/lib/forms/use-external-form-pending';
 
 type OwnerEditSaveButtonProps = {
@@ -32,26 +31,54 @@ export default function OwnerEditSaveButton({
       return;
     }
 
-    const form = document.getElementById(formId);
-    if (!(form instanceof HTMLFormElement)) {
-      return;
-    }
+    let detachFormListeners: (() => void) | null = null;
 
-    const initialSnapshot = serializeForm(form);
+    const attachToForm = () => {
+      if (detachFormListeners) {
+        return true;
+      }
 
-    const updateState = () => {
-      const isValid = isFormValid(form);
-      const isDirty = serializeForm(form) !== initialSnapshot;
-      setCanSubmit(isValid && isDirty);
+      const form = document.getElementById(formId);
+      if (!(form instanceof HTMLFormElement)) {
+        return false;
+      }
+
+      const initialSnapshot = serializeForm(form);
+      const updateState = () => {
+        const isDirty = serializeForm(form) !== initialSnapshot;
+        setCanSubmit(isDirty);
+      };
+
+      updateState();
+      form.addEventListener('input', updateState);
+      form.addEventListener('change', updateState);
+      form.addEventListener('reset', updateState);
+      detachFormListeners = () => {
+        form.removeEventListener('input', updateState);
+        form.removeEventListener('change', updateState);
+        form.removeEventListener('reset', updateState);
+      };
+
+      return true;
     };
 
-    updateState();
-    form.addEventListener('input', updateState);
-    form.addEventListener('change', updateState);
+    if (attachToForm()) {
+      return () => {
+        detachFormListeners?.();
+      };
+    }
+
+    const observer = new MutationObserver(() => {
+      const attached = attachToForm();
+      if (attached) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      form.removeEventListener('input', updateState);
-      form.removeEventListener('change', updateState);
+      observer.disconnect();
+      detachFormListeners?.();
     };
   }, [formId, isLocked]);
 

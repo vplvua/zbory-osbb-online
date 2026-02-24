@@ -58,6 +58,7 @@ export default async function OwnerNewPage({ searchParams }: OwnerNewPageProps) 
             submitLabel="Додати"
             formId={OWNER_CREATE_FORM_ID}
             showSubmitButton={false}
+            leaveConfirmationMessage="Внесені зміни не будуть збережені. Ви дійсно бажаєте вийти?"
           />
         </div>
       </main>

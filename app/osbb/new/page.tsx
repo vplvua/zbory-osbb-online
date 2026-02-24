@@ -28,6 +28,7 @@ export default async function OsbbNewPage() {
             formId="osbb-create-form"
             showSubmitButton={false}
             submitLabel="Зберегти"
+            leaveConfirmationMessage="Ревізити ОСББ не будуть збережені. Ви дійсно бажаєте залишти сторінку?"
           />
         </div>
       </main>
