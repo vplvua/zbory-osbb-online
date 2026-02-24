@@ -51,6 +51,7 @@ export default async function ProtocolNewPage({ params, searchParams }: Protocol
             formId={PROTOCOL_CREATE_FORM_ID}
             showSubmitButton={false}
             title="Новий протокол"
+            leaveConfirmationMessage="Внесені зміни не будуть збережені. Ви дійсно бажаєте вийти?"
             defaultValues={{ osbbId: osbb.id, type: 'GENERAL' }}
           />
         </div>

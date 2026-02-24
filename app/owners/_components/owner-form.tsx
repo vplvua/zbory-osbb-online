@@ -1,9 +1,10 @@
 'use client';
 
-import { type ChangeEvent, useActionState, useState } from 'react';
+import { type ChangeEvent, useActionState, useRef, useState } from 'react';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Textarea } from '@/components/ui/textarea';
 import type { OwnerFormState } from '@/app/owners/actions';
+import { useUnsavedChangesGuard } from '@/lib/forms/use-unsaved-changes-guard';
 import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: OwnerFormState = {};
@@ -46,6 +48,7 @@ type OwnerFormProps = {
   formId?: string;
   showSubmitButton?: boolean;
   isDisabled?: boolean;
+  leaveConfirmationMessage?: string;
 };
 
 export default function OwnerForm({
@@ -55,9 +58,15 @@ export default function OwnerForm({
   formId,
   showSubmitButton = true,
   isDisabled = false,
+  leaveConfirmationMessage,
 }: OwnerFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
   useActionErrorToast(state.error);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const { isLeaveModalOpen, handleConfirmLeave, handleCloseLeaveModal } = useUnsavedChangesGuard({
+    formRef,
+    enabled: Boolean(leaveConfirmationMessage),
+  });
   const [ownershipMode, setOwnershipMode] = useState<OwnershipMode>(() => {
     const numerator = Number.parseInt(defaultValues?.ownershipNumerator ?? '1', 10);
     const denominator = Number.parseInt(defaultValues?.ownershipDenominator ?? '1', 10);
@@ -97,6 +106,7 @@ export default function OwnerForm({
       <CardContent>
         <form
           id={formId}
+          ref={formRef}
           action={formAction}
           className="space-y-4"
           data-submitting={isPending ? 'true' : 'false'}
@@ -278,6 +288,18 @@ export default function OwnerForm({
           {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
         </form>
       </CardContent>
+      {leaveConfirmationMessage ? (
+        <ConfirmModal
+          open={isLeaveModalOpen}
+          title="Незбережені зміни"
+          description={leaveConfirmationMessage}
+          confirmLabel="Вийти"
+          cancelLabel="Залишитись"
+          confirmVariant="primary"
+          onConfirm={handleConfirmLeave}
+          onClose={handleCloseLeaveModal}
+        />
+      ) : null}
     </Card>
   );
 }

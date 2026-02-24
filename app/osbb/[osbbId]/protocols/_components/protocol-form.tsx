@@ -1,13 +1,15 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
+import { useUnsavedChangesGuard } from '@/lib/forms/use-unsaved-changes-guard';
 import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: ProtocolFormState = {};
@@ -25,6 +27,7 @@ type ProtocolFormProps = {
   formId?: string;
   showSubmitButton?: boolean;
   title?: string;
+  leaveConfirmationMessage?: string;
 };
 
 export default function ProtocolForm({
@@ -34,8 +37,14 @@ export default function ProtocolForm({
   formId,
   showSubmitButton = true,
   title = 'Реквізити протоколу',
+  leaveConfirmationMessage,
 }: ProtocolFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const { isLeaveModalOpen, handleConfirmLeave, handleCloseLeaveModal } = useUnsavedChangesGuard({
+    formRef,
+    enabled: Boolean(leaveConfirmationMessage),
+  });
   useActionErrorToast(state.error);
 
   return (
@@ -46,6 +55,7 @@ export default function ProtocolForm({
       <CardContent>
         <form
           id={formId}
+          ref={formRef}
           action={formAction}
           className="space-y-4"
           data-submitting={isPending ? 'true' : 'false'}
@@ -107,6 +117,18 @@ export default function ProtocolForm({
           </fieldset>
         </form>
       </CardContent>
+      {leaveConfirmationMessage ? (
+        <ConfirmModal
+          open={isLeaveModalOpen}
+          title="Незбережені зміни"
+          description={leaveConfirmationMessage}
+          confirmLabel="Вийти"
+          cancelLabel="Залишитись"
+          confirmVariant="primary"
+          onConfirm={handleConfirmLeave}
+          onClose={handleCloseLeaveModal}
+        />
+      ) : null}
     </Card>
   );
 }

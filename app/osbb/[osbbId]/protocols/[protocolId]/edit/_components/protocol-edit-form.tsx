@@ -1,16 +1,18 @@
 'use client';
 
 import type { SVGProps } from 'react';
-import { useActionState, useMemo, useState } from 'react';
+import { useActionState, useMemo, useRef, useState } from 'react';
 import AddIcon from '@/components/icons/add-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { ErrorAlert } from '@/components/ui/error-alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Textarea } from '@/components/ui/textarea';
 import type { ProtocolFormState } from '@/app/osbb/[osbbId]/protocols/actions';
+import { useUnsavedChangesGuard } from '@/lib/forms/use-unsaved-changes-guard';
 import { useActionErrorToast } from '@/lib/toast/use-action-error-toast';
 
 const initialState: ProtocolFormState = {};
@@ -38,6 +40,8 @@ type ProtocolEditFormProps = {
       requiresTwoThirds: boolean;
     }>;
   };
+  leaveConfirmationMessage?: string;
+  isDisabled?: boolean;
 };
 
 function TrashIcon(props: SVGProps<SVGSVGElement>) {
@@ -60,8 +64,19 @@ function createClientId() {
   return `tmp-${Math.random().toString(36).slice(2)}`;
 }
 
-export default function ProtocolEditForm({ formId, action, defaultValues }: ProtocolEditFormProps) {
+export default function ProtocolEditForm({
+  formId,
+  action,
+  defaultValues,
+  leaveConfirmationMessage,
+  isDisabled = false,
+}: ProtocolEditFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const { isLeaveModalOpen, handleConfirmLeave, handleCloseLeaveModal } = useUnsavedChangesGuard({
+    formRef,
+    enabled: Boolean(leaveConfirmationMessage),
+  });
   useActionErrorToast(state.error);
 
   const initialQuestions = useMemo<EditableQuestion[]>(
@@ -123,11 +138,12 @@ export default function ProtocolEditForm({ formId, action, defaultValues }: Prot
   return (
     <form
       id={formId}
+      ref={formRef}
       action={formAction}
       className="space-y-6"
       data-submitting={isPending ? 'true' : 'false'}
     >
-      <fieldset disabled={isPending} className="space-y-6">
+      <fieldset disabled={isDisabled || isPending} className="space-y-6">
         {state.error ? <ErrorAlert>{state.error}</ErrorAlert> : null}
 
         <Card>
@@ -259,6 +275,18 @@ export default function ProtocolEditForm({ formId, action, defaultValues }: Prot
           <LoadingSpinner className="h-4 w-4" />
           Зберігаємо зміни...
         </p>
+      ) : null}
+      {leaveConfirmationMessage ? (
+        <ConfirmModal
+          open={isLeaveModalOpen}
+          title="Незбережені зміни"
+          description={leaveConfirmationMessage}
+          confirmLabel="Вийти"
+          cancelLabel="Залишитись"
+          confirmVariant="primary"
+          onConfirm={handleConfirmLeave}
+          onClose={handleCloseLeaveModal}
+        />
       ) : null}
     </form>
   );
