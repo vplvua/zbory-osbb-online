@@ -66,6 +66,8 @@ pnpm build
 - Local development and troubleshooting: [docs/local-dev.md](docs/local-dev.md)
 - Integrations and runtime modes: [docs/integrations.md](docs/integrations.md)
 - Vercel deployment guide: [docs/deploy-vercel.md](docs/deploy-vercel.md)
+- Release process and versioning: [docs/release-policy.md](docs/release-policy.md)
+- Release notes history: [CHANGELOG.md](CHANGELOG.md)
 - Internal MCP PostgreSQL read-only setup: [docs/internal/mcp-postgres-ro.md](docs/internal/mcp-postgres-ro.md)
 
 ## Security
