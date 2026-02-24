@@ -152,6 +152,29 @@ pnpm worker:deferred-queue -- --limit 50
 
 Worker updates `attempts`, `lastError`, and status (`PENDING`, `DONE`, `FAILED`).
 
+## Deferred Queue Cron Endpoint (Local/Preview)
+
+Endpoint:
+
+- `GET /api/cron/deferred-queue`
+
+Auth behavior:
+
+- If `CRON_SECRET` is empty, endpoint is callable without auth (local convenience mode).
+- If `CRON_SECRET` is set, send either `Authorization: Bearer <CRON_SECRET>` or `x-cron-secret: <CRON_SECRET>`.
+- In production, missing `CRON_SECRET` is treated as misconfiguration and endpoint responds `503`.
+
+Examples:
+
+```bash
+curl "http://localhost:3000/api/cron/deferred-queue?limit=20"
+```
+
+```bash
+curl "http://localhost:3000/api/cron/deferred-queue?limit=20" \
+  -H "Authorization: Bearer ${CRON_SECRET}"
+```
+
 ## DB Helper
 
 Use shared Prisma singleton in server-only code:

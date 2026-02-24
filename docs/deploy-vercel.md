@@ -10,21 +10,21 @@
 
 ## Environment Variables
 
-| Variable                 | Required               | Recommended scope                              | Notes                                                                                     |
-| ------------------------ | ---------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Yes                    | Production + Preview                           | Main runtime DB URL used by Prisma client.                                                |
-| `POSTGRES_URL`           | Yes (for migrations)   | Production + Preview                           | Direct DB URL for Prisma migrations (`directUrl`).                                        |
-| `NEXTAUTH_SECRET`        | Yes                    | Production (+ Preview if auth is tested there) | Required in production; use a long random secret. Mark as sensitive.                      |
-| `NEXTAUTH_URL`           | Yes                    | Production                                     | Public app URL, for example `https://<your-domain>`.                                      |
-| `ENCRYPTION_KEY`         | Yes                    | Production + Preview                           | App-level encryption key (32+ chars).                                                     |
-| `DUBIDOC_API_KEY`        | Yes in Production      | Production + Preview                           | Required by production env guardrails. In preview/dev, empty/placeholder keeps mock mode. |
-| `DUBIDOC_ORG_ID`         | Yes in Production      | Production + Preview                           | Required by production env guardrails. In preview/dev, empty/placeholder keeps mock mode. |
-| `DUBIDOC_CALLBACK_URL`   | Optional               | Production + Preview                           | If empty, fallback is `${NEXTAUTH_URL}/api/webhooks/dubidoc`.                             |
-| `DUBIDOC_WEBHOOK_SECRET` | Optional (recommended) | Production + Preview                           | If set, Dubidoc must send `x-dubidoc-webhook-secret`.                                     |
-| `TURBOSMS_API_KEY`       | Yes in Production      | Production + Preview                           | Required by production env guardrails. In preview/dev, empty/placeholder keeps mock mode. |
-| `TURBOSMS_SENDER`        | Yes in Production      | Production + Preview                           | Required by production env guardrails. Sender must be non-empty and max 32 chars.         |
-| `OPENAI_API_KEY`         | Optional               | Production + Preview                           | Stage 2 only.                                                                             |
-| `CRON_SECRET`            | Optional (recommended) | Production + Preview                           | Protects `/api/cron/deferred-queue` endpoint.                                             |
+| Variable                 | Required               | Recommended scope                              | Notes                                                                                                                  |
+| ------------------------ | ---------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Yes                    | Production + Preview                           | Main runtime DB URL used by Prisma client.                                                                             |
+| `POSTGRES_URL`           | Yes (for migrations)   | Production + Preview                           | Direct DB URL for Prisma migrations (`directUrl`).                                                                     |
+| `NEXTAUTH_SECRET`        | Yes                    | Production (+ Preview if auth is tested there) | Required in production; use a long random secret. Mark as sensitive.                                                   |
+| `NEXTAUTH_URL`           | Yes                    | Production                                     | Public app URL, for example `https://<your-domain>`.                                                                   |
+| `ENCRYPTION_KEY`         | Yes                    | Production + Preview                           | App-level encryption key (32+ chars).                                                                                  |
+| `DUBIDOC_API_KEY`        | Yes in Production      | Production + Preview                           | Required by production env guardrails. In preview/dev, empty/placeholder keeps mock mode.                              |
+| `DUBIDOC_ORG_ID`         | Yes in Production      | Production + Preview                           | Required by production env guardrails. In preview/dev, empty/placeholder keeps mock mode.                              |
+| `DUBIDOC_CALLBACK_URL`   | Optional               | Production + Preview                           | If empty, fallback is `${NEXTAUTH_URL}/api/webhooks/dubidoc`.                                                          |
+| `DUBIDOC_WEBHOOK_SECRET` | Optional (recommended) | Production + Preview                           | If set, Dubidoc must send `x-dubidoc-webhook-secret`.                                                                  |
+| `TURBOSMS_API_KEY`       | Yes in Production      | Production + Preview                           | Required by production env guardrails. In preview/dev, empty/placeholder keeps mock mode.                              |
+| `TURBOSMS_SENDER`        | Yes in Production      | Production + Preview                           | Required by production env guardrails. Sender must be non-empty and max 32 chars.                                      |
+| `OPENAI_API_KEY`         | Optional               | Production + Preview                           | Stage 2 only.                                                                                                          |
+| `CRON_SECRET`            | Yes in Production      | Production + Preview                           | Protects `/api/cron/deferred-queue` endpoint. If missing in production, endpoint returns `503` misconfiguration error. |
 
 Notes:
 

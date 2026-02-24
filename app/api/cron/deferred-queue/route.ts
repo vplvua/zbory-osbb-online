@@ -3,8 +3,16 @@ import { processDueDeferredQueueJobs } from '@/lib/queue/deferred-queue';
 
 export const runtime = 'nodejs';
 
-function isAuthorized(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET?.trim();
+function readCronSecret(): string {
+  return process.env.CRON_SECRET?.trim() ?? '';
+}
+
+function isProductionRuntime(): boolean {
+  const vercelEnv = process.env.VERCEL_ENV?.trim().toLowerCase();
+  return vercelEnv === 'production' || process.env.NODE_ENV === 'production';
+}
+
+function isAuthorized(request: Request, cronSecret: string): boolean {
   if (!cronSecret) {
     return true;
   }
@@ -32,8 +40,23 @@ function parseLimit(value: string | null): number {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, message: 'Unauthorized cron request.' }, { status: 401 });
+  const cronSecret = readCronSecret();
+  if (isProductionRuntime() && cronSecret.length === 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          'Cron endpoint misconfigured: CRON_SECRET is required in production for /api/cron/deferred-queue.',
+      },
+      { status: 503 },
+    );
+  }
+
+  if (!isAuthorized(request, cronSecret)) {
+    return NextResponse.json(
+      { ok: false, message: 'Unauthorized cron request: invalid or missing cron secret.' },
+      { status: 401 },
+    );
   }
 
   const url = new URL(request.url);
