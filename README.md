@@ -550,3 +550,18 @@ Check latest deployment logs:
 - `prisma migrate deploy` ran successfully.
 - `All migrations have been successfully applied.`
 - `next build` completed successfully.
+
+## License
+
+This repository is licensed under the GNU Affero General Public License v3.0 (`AGPL-3.0`).
+See [LICENSE](./LICENSE) for details.
+
+## Security
+
+If you find a vulnerability, follow [SECURITY.md](./SECURITY.md) and avoid posting exploit details in public issues.
+
+## Contribution policy
+
+This project is currently maintainer-driven.
+External pull requests may be closed without merge.
+You can still fork and use the code under the project license.
