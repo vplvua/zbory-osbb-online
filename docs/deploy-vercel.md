@@ -78,6 +78,66 @@ Dev-only simulator endpoint:
 - `POST /api/dev/dubidoc/mock-webhook`
 - Disabled in production (`404`)
 
+## Deferred Queue Cron (Production Ops)
+
+Vercel cron schedule is defined in [`vercel.json`](../vercel.json):
+
+- Path: `/api/cron/deferred-queue`
+- Schedule: `*/5 * * * *` (every 5 minutes)
+
+Trigger/auth contract:
+
+- Method: `GET`
+- Auth: `Authorization: Bearer <CRON_SECRET>` (Vercel sends this automatically when `CRON_SECRET` is configured)
+- Alternative auth header (manual): `x-cron-secret: <CRON_SECRET>`
+
+Queue processing limits:
+
+- Default per run: `20` jobs
+- Override for manual runs: `?limit=<N>` where `N` is clamped to `1..200`
+
+Expected responses:
+
+- `200`:
+
+```json
+{
+  "ok": true,
+  "scanned": 20,
+  "processed": 20,
+  "succeeded": 18,
+  "retried": 2,
+  "failed": 0,
+  "skipped": 0
+}
+```
+
+- `401`: invalid/missing cron secret
+- `503`: `CRON_SECRET` missing in production (misconfiguration)
+
+Manual invocation:
+
+```bash
+curl "https://<your-domain>/api/cron/deferred-queue?limit=50" \
+  -H "Authorization: Bearer <CRON_SECRET>"
+```
+
+Runbook for failed cron runs:
+
+1. Check Vercel Function logs for `/api/cron/deferred-queue` and note status code/error.
+2. If `503`: set `CRON_SECRET` in Vercel env (`Production`, and `Preview` if used), then redeploy.
+3. If `401`: verify cron job auth and `CRON_SECRET` value match current deployment env.
+4. Re-run endpoint manually (`limit=50` or lower) until due backlog starts decreasing.
+5. Verify backlog in DB:
+
+```sql
+SELECT COUNT(*) AS pending_due
+FROM "DeferredQueue"
+WHERE status = 'PENDING' AND "runAt" <= NOW();
+```
+
+If `pending_due` does not decrease after retries, inspect `lastError` values and fix the underlying integration/runtime issue before retrying again.
+
 ## Post-Deploy Verification
 
 Check deployment logs for:
