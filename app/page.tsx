@@ -382,9 +382,22 @@ export default async function HomePage() {
                   Формування листка опитування, електронне підписання та збереження документів
                   здійснюються у цифровому форматі для подальшого використання та архівування.
                 </p>
-                <p className="text-muted-foreground border-border/70 bg-surface-muted/70 rounded-md border px-3 py-2 text-xs">
-                  Тут можна додати конкретизацію щодо типу електронного підпису, якщо потрібно.
-                </p>
+                <div className="text-muted-foreground border-border/70 bg-surface-muted/70 space-y-1 rounded-md border px-3 py-2 text-xs">
+                  <p>Використовуються підписи типу CAdES-B-LT (ETSI EN 319 122-1).</p>
+                  <p>Підписання документів через Дія.Підпис, ключем ЕЦП, SmartID, monoКЕП.</p>
+                  <p>
+                    Для підписання використовується сервіс{' '}
+                    <a
+                      href="https://my.dubidoc.com.ua/auth?ref=ZDJBhNlaeX"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand hover:underline"
+                    >
+                      Dubidoc
+                    </a>
+                    .
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </section>
