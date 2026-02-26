@@ -1,5 +1,6 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import RequiredFieldsController from '@/components/forms/required-fields-controller';
 import ToastProvider from '@/components/toast/toast-provider';
 
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="uk">
       <body className={`${inter.variable} bg-background text-foreground font-sans antialiased`}>
         {children}
+        <Analytics />
         <RequiredFieldsController />
         <ToastProvider />
       </body>
